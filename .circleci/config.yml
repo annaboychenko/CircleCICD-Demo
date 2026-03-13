@@ -1,0 +1,19 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install --upgrade pip
+      - run:
+          name: Run tests
+          command: python test_apartment.py
+
+workflows:
+  main:
+    jobs:
+      - test

@@ -1,0 +1,4 @@
+.venv/
+pams.db
+__pycache__/
+*.pyc
