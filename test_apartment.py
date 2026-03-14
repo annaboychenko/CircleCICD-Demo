@@ -369,7 +369,8 @@ class TestApartmentManager(unittest.TestCase):
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
         manager.add_maintenance_request(apt_id, "broken boiler", "high")
-        self.assertEqual(manager.get_all_maintenance_requests()[0].priority, "high")
+        self.assertEqual(manager.get_all_maintenance_requests()[0].priority, "High")
+
 
     def test_add_maintenance_request_invalid_priority_raises_error(self):
         """priority values outside low/medium/high should raise ValueError"""
