@@ -1,478 +1,832 @@
 # Anna Boychenko - 24030024
 # Apartment Management GUI - PAMS group project
-# this file builds the actual screens the user sees using tkinter
-# i used tkinter because thats what we used in labs and i know how it works
-# the brief said desktop app so no flask or html here
+# tkinter for the gui because thats what we used in all the labs
+# spent ages trying to make this look decent, went through like 3 different colour schemes
+# before settling on this dark teal one
+#
+# pages in this file:
+#   - apartments overview (with stats)
+#   - register new apartment
+#   - assign tenant to apartment
+#   - maintenance requests list
+#   - new maintenance request form
+#
+# TODO: might add a search/filter bar to the apartments table if i have time
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 from apartment import ApartmentManager
+import platform
 
-# main class for the apartment management window
-# everything the user sees and does goes through here
+# fixes the blurry font issue on windows - found this fix on stack overflow
+# it crashes silently on mac/linux so wrapping in try/except
+if platform.system() == "Windows":
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
+# colour palette - went through a lot of trial and error to get these right
+# the hex values might look random but they all work together i promise
+# tried purple first but it looked too generic, teal feels more unique
+BG_BASE      = "#111318"   # main background - almost black
+BG_SURFACE   = "#181b24"   # sidebar background
+BG_CARD      = "#1e2130"   # cards and table background
+BG_INPUT     = "#252a3a"   # entry field background
+BG_ROW_ODD   = "#222638"   # alternate row colour for the tables
+
+TEAL         = "#2dd4bf"   # main accent colour
+TEAL_DIM     = "#1fa898"   # slightly darker for hover states
+TEAL_BG      = "#0d2622"   # teal tinted background for buttons
+
+AMBER        = "#f59e0b"   # used for warnings and open maintenance requests
+AMBER_BG     = "#2a1f06"
+
+RED          = "#f87171"   # used for occupied status and danger actions
+RED_BG       = "#2a1010"
+
+TEXT_BRIGHT  = "#f1f5f9"   # headings
+TEXT_MAIN    = "#cbd5e1"   # normal text
+TEXT_MUTED   = "#64748b"   # labels and secondary text
+TEXT_DIVIDER = "#374151"   # dividers and section labels
+
+BORDER       = "#2d3347"   # card and input borders
+
+
+class PillButton(tk.Frame):
+    """
+    custom button class because tkinter's built-in Button widget looks awful
+    on dark backgrounds - the relief and default grey just cant be styled properly
+    so i build it from a Frame + Label instead and handle hover manually
+    saw this technique in a youtube tutorial and adapted it for this project
+    """
+    def __init__(self, parent, text, command,
+                 bg=TEAL, fg=BG_BASE, hover_bg=TEAL_DIM,
+                 padx=18, pady=7, font_size=10, **kw):
+        super().__init__(parent, bg=bg, cursor="hand2", **kw)
+        self._bg       = bg
+        self._hover_bg = hover_bg
+        self._lbl = tk.Label(self, text=text,
+                             font=("Helvetica", font_size, "bold"),
+                             bg=bg, fg=fg, padx=padx, pady=pady,
+                             cursor="hand2")
+        self._lbl.pack()
+        for w in (self, self._lbl):
+            w.bind("<Button-1>", lambda e: command())
+            w.bind("<Enter>",    self._on_enter)
+            w.bind("<Leave>",    self._on_leave)
+
+    def _on_enter(self, _):
+        self.configure(bg=self._hover_bg)
+        self._lbl.configure(bg=self._hover_bg)
+
+    def _on_leave(self, _):
+        self.configure(bg=self._bg)
+        self._lbl.configure(bg=self._bg)
+
+
+class StatCard(tk.Frame):
+    """small summary card - shows a number and a label, with a coloured top bar"""
+    def __init__(self, parent, value, label, accent, **kw):
+        super().__init__(parent, bg=BG_CARD,
+                         highlightthickness=1,
+                         highlightbackground=BORDER, **kw)
+        # the coloured top bar is what makes these look like proper stat cards
+        tk.Frame(self, bg=accent, height=3).pack(fill="x")
+        inner = tk.Frame(self, bg=BG_CARD)
+        inner.pack(padx=24, pady=(12, 14))
+        tk.Label(inner, text=str(value),
+                 font=("Helvetica", 24, "bold"),
+                 bg=BG_CARD, fg=accent).pack()
+        tk.Label(inner, text=label,
+                 font=("Helvetica", 9),
+                 bg=BG_CARD, fg=TEXT_MUTED).pack()
+
+
 class ApartmentApp:
+    """main application class - builds the whole gui"""
 
     def __init__(self, root):
         self.root = root
-        self.root.title("PAMS - Apartment Management")
-        self.root.geometry("900x600")
-        self.root.configure(bg="#f0f0f0")
+        self.root.title("PAMS — Apartment Management")
+        self.root.geometry("1200x740")
+        self.root.minsize(960, 600)
+        self.root.configure(bg=BG_BASE)
 
-        # create an instance of ApartmentManager to handle all the db stuff
+        self._setup_styles()
+
+        # create the manager and load mock data for the demo
+        # the manager talks to the sqlite database through the methods in apartment.py
         self.manager = ApartmentManager()
-
-        # load in the mock data when app first starts
         self.manager.insert_mock_data()
 
-        # build the two main parts of the layout
-        self.build_sidebar()
-        self.build_main_area()
+        self._nav_rows = {}   # stores references to nav buttons so we can highlight them
+        self._build_sidebar()
+        self._build_main_area()
+        self.show_apartments()   # start on the apartments page
 
-        # default screen when you open the app
-        self.show_apartments()
+    # ================================================================= #
+    #  TTK STYLES                                                        #
+    # ================================================================= #
 
-    # builds the left side navigation bar
-    def build_sidebar(self):
-        sidebar = tk.Frame(self.root, bg="#2c3e50", width=200)
-        sidebar.pack(side="left", fill="y")
-        sidebar.pack_propagate(False)  # stops the sidebar shrinking to fit content
+    def _setup_styles(self):
+        # ttk widgets need custom styles to match the dark theme
+        # the "clam" theme is the only one that actually lets you override colours properly
+        # "default" and "alt" both ignore the background settings for some reason
+        s = ttk.Style()
+        s.theme_use("clam")
 
-        # app title at top of sidebar
-        tk.Label(sidebar, text="PAMS", font=("Arial", 18, "bold"),
-                 bg="#2c3e50", fg="white").pack(pady=20)
+        s.configure("Apt.Treeview",
+                    background=BG_CARD, foreground=TEXT_MAIN,
+                    fieldbackground=BG_CARD, borderwidth=0,
+                    rowheight=42, font=("Helvetica", 10))
 
-        tk.Label(sidebar, text="Apartment Management", font=("Arial", 9),
-                 bg="#2c3e50", fg="#bdc3c7", wraplength=160).pack(pady=5)
+        s.configure("Apt.Treeview.Heading",
+                    background=BG_SURFACE, foreground=TEXT_MUTED,
+                    borderwidth=0, relief="flat",
+                    font=("Helvetica", 9, "bold"), padding=(14, 12))
 
-        ttk.Separator(sidebar, orient="horizontal").pack(fill="x", pady=10)
+        s.map("Apt.Treeview",
+              background=[("selected", "#2a2f45")],
+              foreground=[("selected", TEXT_BRIGHT)])
+        s.map("Apt.Treeview.Heading",
+              background=[("active", BG_CARD)],
+              relief=[("active", "flat")])
 
-        # list of buttons and what they do when clicked
-        buttons = [
-            ("View Apartments", self.show_apartments),
-            ("Register Apartment", self.show_register_form),
-            ("Assign Tenant", self.show_assign_tenant),
-            ("Maintenance Requests", self.show_maintenance),
-            ("Add Maintenance Request", self.show_maintenance_form),
-        ]
+        # skinny scrollbar - width=5 makes it look modern, default is way too chunky
+        s.configure("Apt.Vertical.TScrollbar",
+                    background=BG_CARD, troughcolor=BG_BASE,
+                    borderwidth=0, arrowcolor=TEXT_MUTED, width=5)
 
-        # create each button from the list above
-        for text, command in buttons:
-            tk.Button(sidebar, text=text, command=command,
-                      bg="#34495e", fg="white", font=("Arial", 10),
-                      relief="flat", cursor="hand2", pady=8,
-                      activebackground="#1abc9c", activeforeground="white"
-                      ).pack(fill="x", padx=10, pady=3)
+        s.configure("Apt.TCombobox",
+                    background=BG_INPUT, foreground=TEXT_MAIN,
+                    fieldbackground=BG_INPUT, borderwidth=0,
+                    selectbackground=TEAL, padding=(10, 7))
+        s.map("Apt.TCombobox",
+              fieldbackground=[("readonly", BG_INPUT)],
+              foreground=[("readonly", TEXT_MAIN)],
+              selectbackground=[("readonly", TEAL)])
 
-    # builds the right side where the content changes
-    def build_main_area(self):
-        self.main_frame = tk.Frame(self.root, bg="#f0f0f0")
-        self.main_frame.pack(side="right", fill="both", expand=True)
+    # ================================================================= #
+    #  SIDEBAR                                                           #
+    # ================================================================= #
 
-    # clears the main area before showing something new
-    # have to do this or all the screens stack on top of each other
-    def clear_main(self):
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+    def _build_sidebar(self):
+        # width=222 and pack_propagate(False) stops the sidebar from shrinking
+        # to fit its contents - took me ages to figure out why it kept collapsing
+        sb = tk.Frame(self.root, bg=BG_SURFACE, width=222)
+        sb.pack(side="left", fill="y")
+        sb.pack_propagate(False)
+        self._sb = sb
 
-    # shows all apartments in a table
-    # colour coded so vacant = green, occupied = red - makes it easy to see at a glance
-    def show_apartments(self):
-        self.clear_main()
+        # logo area at the top of the sidebar
+        logo = tk.Frame(sb, bg=BG_SURFACE)
+        logo.pack(fill="x", padx=22, pady=(30, 20))
+        icon = tk.Frame(logo, bg=TEAL, width=34, height=34)
+        icon.pack(side="left")
+        icon.pack_propagate(False)
+        # using place() here instead of pack because its the only way to properly
+        # centre the letter inside the fixed-size frame
+        tk.Label(icon, text="P", font=("Helvetica", 14, "bold"),
+                 bg=TEAL, fg=BG_BASE).place(relx=.5, rely=.5, anchor="center")
+        txt = tk.Frame(logo, bg=BG_SURFACE)
+        txt.pack(side="left", padx=(10, 0))
+        tk.Label(txt, text="PAMS", font=("Helvetica", 14, "bold"),
+                 bg=BG_SURFACE, fg=TEXT_BRIGHT).pack(anchor="w")
+        tk.Label(txt, text="Management System", font=("Helvetica", 7),
+                 bg=BG_SURFACE, fg=TEXT_MUTED).pack(anchor="w")
 
-        tk.Label(self.main_frame, text="All Apartments", font=("Arial", 16, "bold"),
-                 bg="#f0f0f0").pack(pady=15)
+        tk.Frame(sb, bg=BORDER, height=1).pack(fill="x", padx=16)
 
-        frame = tk.Frame(self.main_frame, bg="#f0f0f0")
-        frame.pack(fill="both", expand=True, padx=20)
+        # nav groups
+        self._section_lbl(sb, "APARTMENTS")
+        self._nav_row(sb, "  Apartments",   self.show_apartments)
+        self._nav_row(sb, "  Register",      self.show_register_form)
+        self._nav_row(sb, "  Assign Tenant", self.show_assign_tenant)
+        tk.Frame(sb, bg=BG_SURFACE, height=4).pack()
+        self._section_lbl(sb, "MAINTENANCE")
+        self._nav_row(sb, "  All Requests",  self.show_maintenance)
+        self._nav_row(sb, "  New Request",   self.show_maintenance_form)
 
-        # scrollbar for if there are loads of apartments
-        scrollbar = ttk.Scrollbar(frame)
-        scrollbar.pack(side="right", fill="y")
+        # spacer then credit
+        tk.Frame(sb, bg=BG_SURFACE).pack(expand=True, fill="both")
+        tk.Frame(sb, bg=BORDER, height=1).pack(fill="x", padx=16)
+        tk.Label(sb, text="Anna Boychenko  ·  24030024",
+                 font=("Helvetica", 7), bg=BG_SURFACE, fg=TEXT_MUTED
+                 ).pack(pady=(7, 3))
+        tk.Label(sb, text="PAMS v1.0", font=("Helvetica", 7),
+                 bg=BG_SURFACE, fg=TEXT_DIVIDER).pack(pady=(0, 14))
 
-        # treeview is tkinters table widget
-        cols = ("ID", "Location", "Type", "Rent (£)", "Rooms", "Status", "Tenant ID")
-        tree = ttk.Treeview(frame, columns=cols, show="headings",
-                            yscrollcommand=scrollbar.set)
+    def _section_lbl(self, parent, text):
+        tk.Label(parent, text=text,
+                 font=("Helvetica", 7, "bold"),
+                 bg=BG_SURFACE, fg=TEXT_DIVIDER
+                 ).pack(anchor="w", padx=22, pady=(12, 4))
 
-        # set up each column header and width
-        for col in cols:
-            tree.heading(col, text=col)
-            tree.column(col, width=110, anchor="center")
+    def _nav_row(self, parent, label, command):
+        outer = tk.Frame(parent, bg=BG_SURFACE, cursor="hand2")
+        outer.pack(fill="x", padx=8, pady=1)
 
-        scrollbar.config(command=tree.yview)
+        # the 3px indicator bar on the left - only visible when the row is active
+        ind = tk.Frame(outer, bg=BG_SURFACE, width=3)
+        ind.pack(side="left", fill="y")
 
-        # load all apartments and add them to the table
-        apartments = self.manager.get_all_apartments()
-        for apt in apartments:
-            tag = "occupied" if apt.status == "occupied" else "vacant"
-            tree.insert("", "end", values=(
-                apt.apartment_id, apt.location, apt.apt_type,
-                f"£{apt.monthly_rent:.2f}", apt.num_rooms,
-                apt.status, apt.tenant_id or "-"
-            ), tags=(tag,))
+        lbl = tk.Label(outer, text=label,
+                       font=("Helvetica", 10), bg=BG_SURFACE,
+                       fg=TEXT_MUTED, anchor="w", pady=11,
+                       padx=10, cursor="hand2")
+        lbl.pack(side="left", fill="x", expand=True)
 
-        # set the row colours based on the tag
-        tree.tag_configure("occupied", background="#fadbd8")   # light red for occupied
-        tree.tag_configure("vacant", background="#d5f5e3")     # light green for vacant
-        tree.pack(fill="both", expand=True)
+        # store a reference so _activate() can find and update all nav rows
+        self._nav_rows[label] = (outer, ind, lbl)
 
-        # buttons at the bottom for actions on selected rows
-        btn_frame = tk.Frame(self.main_frame, bg="#f0f0f0")
-        btn_frame.pack(pady=10)
+        def activate():
+            self._activate(label)
+            command()
 
-        tk.Button(btn_frame, text="Delete Selected",
-                  command=lambda: self.delete_apartment(tree),
-                  bg="#e74c3c", fg="white", font=("Arial", 10), padx=10).pack(side="left", padx=5)
+        # binding to both outer and lbl so clicking anywhere on the row works
+        def hover_on(e):
+            if outer.cget("bg") == BG_SURFACE:
+                outer.configure(bg="#1e2338")
+                lbl.configure(bg="#1e2338", fg=TEXT_MAIN)
 
-        tk.Button(btn_frame, text="Edit Selected",
-                  command=lambda: self.edit_apartment(tree),
-                  bg="#3498db", fg="white", font=("Arial", 10), padx=10).pack(side="left", padx=5)
+        def hover_off(e):
+            if outer.cget("bg") == "#1e2338":
+                outer.configure(bg=BG_SURFACE)
+                lbl.configure(bg=BG_SURFACE, fg=TEXT_MUTED)
 
-        tk.Button(btn_frame, text="Remove Tenant",
-                  command=lambda: self.remove_tenant(tree),
-                  bg="#e67e22", fg="white", font=("Arial", 10), padx=10).pack(side="left", padx=5)
+        for w in (outer, lbl):
+            w.bind("<Button-1>", lambda e: activate())
+            w.bind("<Enter>", hover_on)
+            w.bind("<Leave>", hover_off)
 
-    # form for registering a new apartment
-    def show_register_form(self):
-        self.clear_main()
-
-        tk.Label(self.main_frame, text="Register New Apartment",
-                 font=("Arial", 16, "bold"), bg="#f0f0f0").pack(pady=15)
-
-        form = tk.Frame(self.main_frame, bg="#f0f0f0")
-        form.pack(padx=40, pady=10)
-
-        # fields - some are dropdowns with set options, some are free text entry
-        fields = [
-            ("Location", ["Bristol", "London", "Manchester", "Cardiff"]),
-            ("Type", ["1-bedroom flat", "2-bedroom flat", "3-bedroom house", "Studio"]),
-            ("Monthly Rent (£)", None),   # None means free text entry
-            ("Number of Rooms", None),
-        ]
-
-        # store all the input variables so i can read them when the form is submitted
-        self.reg_vars = {}
-
-        for i, (label, options) in enumerate(fields):
-            tk.Label(form, text=label, font=("Arial", 11),
-                     bg="#f0f0f0", anchor="w").grid(row=i, column=0, pady=8, sticky="w")
-
-            if options:
-                # dropdown for fields with set choices
-                var = tk.StringVar(value=options[0])
-                ttk.Combobox(form, textvariable=var, values=options,
-                             state="readonly", width=25).grid(row=i, column=1, pady=8, padx=10)
+    def _activate(self, active_label):
+        # loop through all nav rows and update their styling
+        # active one gets the teal indicator + bright text, others get reset
+        for label, (outer, ind, lbl) in self._nav_rows.items():
+            if label == active_label:
+                outer.configure(bg=BG_CARD)
+                ind.configure(bg=TEAL)
+                lbl.configure(bg=BG_CARD, fg=TEXT_BRIGHT,
+                               font=("Helvetica", 10, "bold"))
             else:
-                # text box for number fields
-                var = tk.StringVar()
-                tk.Entry(form, textvariable=var, width=27,
-                         font=("Arial", 11)).grid(row=i, column=1, pady=8, padx=10)
+                outer.configure(bg=BG_SURFACE)
+                ind.configure(bg=BG_SURFACE)
+                lbl.configure(bg=BG_SURFACE, fg=TEXT_MUTED,
+                               font=("Helvetica", 10))
 
-            self.reg_vars[label] = var
+    # ================================================================= #
+    #  MAIN AREA                                                         #
+    # ================================================================= #
 
-        tk.Button(self.main_frame, text="Register Apartment",
-                  command=self.submit_register,
-                  bg="#1abc9c", fg="white", font=("Arial", 12), padx=20, pady=8
-                  ).pack(pady=20)
+    def _build_main_area(self):
+        self.main = tk.Frame(self.root, bg=BG_BASE)
+        self.main.pack(side="right", fill="both", expand=True)
 
-    # called when the register form is submitted
-    def submit_register(self):
+    def _clear(self):
+        # wipe all widgets from the main area before loading a new page
+        # simpler than trying to hide/show frames - just destroy and rebuild
+        for w in self.main.winfo_children():
+            w.destroy()
+
+    # ================================================================= #
+    #  LAYOUT HELPERS                                                    #
+    # ================================================================= #
+
+    def _page_header(self, title, subtitle=""):
+        # teal left bar next to the title - gives it that dashboard look
+        # i tried doing this with a border-left but tkinter doesnt support that
+        # so a thin Frame widget is the workaround
+        wrap = tk.Frame(self.main, bg=BG_BASE)
+        wrap.pack(fill="x", padx=32, pady=(28, 20))
+
+        tk.Frame(wrap, bg=TEAL, width=4).pack(side="left", fill="y")
+
+        txt = tk.Frame(wrap, bg=BG_BASE)
+        txt.pack(side="left", padx=(14, 0))
+        tk.Label(txt, text=title, font=("Helvetica", 20, "bold"),
+                 bg=BG_BASE, fg=TEXT_BRIGHT).pack(anchor="w")
+        if subtitle:
+            tk.Label(txt, text=subtitle, font=("Helvetica", 10),
+                     bg=BG_BASE, fg=TEXT_MUTED).pack(anchor="w", pady=(3, 0))
+
+    def _stats_row(self, items):
+        # renders a row of StatCard widgets at the top of a page
+        bar = tk.Frame(self.main, bg=BG_BASE)
+        bar.pack(fill="x", padx=32, pady=(0, 16))
+        for val, lbl, color in items:
+            StatCard(bar, val, lbl, color).pack(side="left", padx=(0, 10))
+
+    def _table_frame(self, cols, widths, anchors=None):
+        # builds a treeview table with a scrollbar and returns the tree widget
+        # the wrap frame is needed so the scrollbar sits flush against the table
+        wrap = tk.Frame(self.main, bg=BG_BASE)
+        wrap.pack(fill="both", expand=True, padx=32, pady=(0, 6))
+
+        sb = ttk.Scrollbar(wrap, style="Apt.Vertical.TScrollbar")
+        sb.pack(side="right", fill="y")
+
+        if anchors is None:
+            anchors = ["center"] * len(cols)
+
+        tree = ttk.Treeview(wrap, columns=cols, show="headings",
+                            yscrollcommand=sb.set, style="Apt.Treeview",
+                            selectmode="browse")
+        for col, w, a in zip(cols, widths, anchors):
+            tree.heading(col, text=col)
+            tree.column(col, width=w, anchor=a, minwidth=w)
+
+        sb.config(command=tree.yview)
+
+        tree.tag_configure("odd",      background=BG_ROW_ODD)
+        tree.tag_configure("occupied", foreground=RED)
+        tree.tag_configure("vacant",   foreground=TEAL)
+        tree.tag_configure("open",     foreground=AMBER)
+        tree.tag_configure("resolved", foreground=TEAL)
+
+        tree.pack(fill="both", expand=True)
+        return tree
+
+    def _btn_row(self, buttons):
+        bar = tk.Frame(self.main, bg=BG_BASE)
+        bar.pack(fill="x", padx=32, pady=(8, 20))
+        for text, cmd, bg, fg, hover in buttons:
+            PillButton(bar, text, cmd,
+                       bg=bg, fg=fg, hover_bg=hover
+                       ).pack(side="left", padx=(0, 8))
+
+    def _form_card(self):
+        c = tk.Frame(self.main, bg=BG_CARD,
+                     highlightthickness=1, highlightbackground=BORDER)
+        c.pack(fill="x", padx=32, pady=8)
+        return c
+
+    def _form_row(self, parent, label, widget_fn, hint=""):
+        row = tk.Frame(parent, bg=BG_CARD)
+        row.pack(fill="x", pady=8)
+        tk.Label(row, text=label, font=("Helvetica", 10),
+                 bg=BG_CARD, fg=TEXT_MUTED, width=20, anchor="w"
+                 ).pack(side="left")
+        w = widget_fn(row)
+        w.pack(side="left", padx=(10, 0), ipady=5)
+        if hint:
+            tk.Label(row, text=hint, font=("Helvetica", 8),
+                     bg=BG_CARD, fg=TEXT_DIVIDER
+                     ).pack(side="left", padx=(8, 0))
+        return w
+
+    def _entry(self, parent, var, width=34):
+        # insertbackground sets the cursor colour inside the entry field
+        # without this the cursor is black and invisible on the dark background
+        return tk.Entry(parent, textvariable=var,
+                        bg=BG_INPUT, fg=TEXT_MAIN,
+                        insertbackground=TEAL,
+                        relief="flat", font=("Helvetica", 11),
+                        bd=0, width=width,
+                        highlightthickness=1,
+                        highlightcolor=TEAL,
+                        highlightbackground=BORDER)
+
+    def _combo(self, parent, var, values, width=30):
+        return ttk.Combobox(parent, textvariable=var, values=values,
+                            state="readonly", style="Apt.TCombobox",
+                            font=("Helvetica", 11), width=width)
+
+    # ================================================================= #
+    #  APARTMENTS PAGE                                                   #
+    # ================================================================= #
+
+    def show_apartments(self):
+        self._clear()
+        self._activate("  Apartments")
+        self._page_header("Apartments",
+                          "All registered properties across locations")
+
+        apts     = self.manager.get_all_apartments()
+        occupied = sum(1 for a in apts if a.status == "occupied")
+
+        # stat cards at the top - pulling live counts from the database
+        self._stats_row([
+            (len(apts),          "Total",    TEXT_MUTED),
+            (occupied,           "Occupied", RED),
+            (len(apts)-occupied, "Vacant",   TEAL),
+        ])
+
+        cols    = ("ID", "Location", "Type", "Rent (£)", "Rooms", "Status", "Tenant ID")
+        widths  = [52, 120, 200, 100, 70, 108, 90]
+        anchors = ["center","w","w","center","center","center","center"]
+        tree = self._table_frame(cols, widths, anchors)
+
+        for i, a in enumerate(apts):
+            row_tag = "odd" if i % 2 else ""
+            status  = "● Occupied" if a.status == "occupied" else "● Vacant"
+            tree.insert("", "end", values=(
+                a.apartment_id, a.location, a.apt_type,
+                f"£{a.monthly_rent:,.2f}", a.num_rooms,
+                status, a.tenant_id if a.tenant_id else "—"
+            ), tags=(a.status, row_tag))
+
+        self._btn_row([
+            ("✏  Edit",
+             lambda: self._edit_popup(tree),
+             BG_CARD, TEXT_MAIN, "#272c3e"),
+            ("→  Remove Tenant",
+             lambda: self._remove_tenant(tree),
+             AMBER_BG, AMBER, "#3a2a0a"),
+            ("✕  Delete",
+             lambda: self._delete_apartment(tree),
+             RED_BG, RED, "#3a1818"),
+        ])
+
+    # ================================================================= #
+    #  REGISTER PAGE                                                     #
+    # ================================================================= #
+
+    def show_register_form(self):
+        self._clear()
+        self._activate("  Register")
+        self._page_header("Register Apartment",
+                          "Add a new property to the system")
+
+        card = self._form_card()
+        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        form.pack(fill="x")
+
+        locs  = ["Bristol", "London", "Manchester", "Cardiff"]
+        types = ["Studio","1-bedroom flat","2-bedroom flat",
+                 "3-bedroom house","4-bedroom house"]
+
+        self._rv_loc   = tk.StringVar(value=locs[0])
+        self._rv_type  = tk.StringVar(value=types[1])
+        self._rv_rent  = tk.StringVar()
+        self._rv_rooms = tk.StringVar()
+
+        self._form_row(form, "Location",
+            lambda r: self._combo(r, self._rv_loc, locs, 34))
+        self._form_row(form, "Property Type",
+            lambda r: self._combo(r, self._rv_type, types, 34))
+        self._form_row(form, "Monthly Rent (£)",
+            lambda r: self._entry(r, self._rv_rent, 36))
+        self._form_row(form, "Number of Rooms",
+            lambda r: self._entry(r, self._rv_rooms, 36))
+
+        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row.pack(fill="x")
+        PillButton(btn_row, "Register Apartment",
+                   self._submit_register).pack(side="left")
+
+    def _submit_register(self):
         try:
-            location = self.reg_vars["Location"].get()
-            apt_type = self.reg_vars["Type"].get()
-            # need to convert to float/int - will throw ValueError if not a number
-            monthly_rent = float(self.reg_vars["Monthly Rent (£)"].get())
-            num_rooms = int(self.reg_vars["Number of Rooms"].get())
-
-            self.manager.add_apartment(location, apt_type, monthly_rent, num_rooms)
+            rent_s  = self._rv_rent.get().strip()
+            rooms_s = self._rv_rooms.get().strip()
+            if not rent_s:
+                raise ValueError("monthly rent cannot be empty")
+            if not rooms_s:
+                raise ValueError("number of rooms cannot be empty")
+            # float() for rent because rents can have pence (e.g. 1200.50)
+            # int() for rooms because you cant have 2.5 rooms
+            self.manager.add_apartment(
+                self._rv_loc.get(), self._rv_type.get(),
+                float(rent_s), int(rooms_s))
             messagebox.showinfo("Success", "Apartment registered successfully!")
-            self.show_apartments()  # go back to the list after registering
-
+            self.show_apartments()
         except ValueError as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Input Error", str(e))
 
-    # form to assign a tenant to an apartment
-    # only shows vacant apartments in the dropdown
+    # ================================================================= #
+    #  ASSIGN TENANT PAGE                                                #
+    # ================================================================= #
+
     def show_assign_tenant(self):
-        self.clear_main()
+        self._clear()
+        self._activate("  Assign Tenant")
+        self._page_header("Assign Tenant",
+                          "Link a tenant to a vacant apartment")
 
-        tk.Label(self.main_frame, text="Assign Tenant to Apartment",
-                 font=("Arial", 16, "bold"), bg="#f0f0f0").pack(pady=15)
+        card = self._form_card()
+        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        form.pack(fill="x")
 
-        form = tk.Frame(self.main_frame, bg="#f0f0f0")
-        form.pack(padx=40, pady=10)
+        # only show apartments that are currently vacant in the dropdown
+        vacant = [
+            f"{a.apartment_id}  —  {a.location}  ({a.apt_type})"
+            for a in self.manager.get_all_apartments()
+            if a.status == "vacant"
+        ]
 
-        # filter to only show vacant apartments
-        apartments = self.manager.get_all_apartments()
-        vacant = [f"{a.apartment_id} - {a.location} ({a.apt_type})"
-                  for a in apartments if a.status == "vacant"]
-
-        # if there are no vacant ones show a message instead
         if not vacant:
             tk.Label(form, text="No vacant apartments available.",
-                     font=("Arial", 12), bg="#f0f0f0", fg="red").pack(pady=20)
+                     font=("Helvetica", 12),
+                     bg=BG_CARD, fg=RED, pady=20).pack()
             return
 
-        tk.Label(form, text="Select Apartment", font=("Arial", 11),
-                 bg="#f0f0f0").grid(row=0, column=0, pady=8, sticky="w")
-        self.assign_apt_var = tk.StringVar(value=vacant[0])
-        ttk.Combobox(form, textvariable=self.assign_apt_var, values=vacant,
-                     state="readonly", width=35).grid(row=0, column=1, pady=8, padx=10)
+        self._av_apt    = tk.StringVar(value=vacant[0])
+        self._av_tenant = tk.StringVar()
 
-        tk.Label(form, text="Tenant ID", font=("Arial", 11),
-                 bg="#f0f0f0").grid(row=1, column=0, pady=8, sticky="w")
-        self.assign_tenant_var = tk.StringVar()
-        tk.Entry(form, textvariable=self.assign_tenant_var, width=37,
-                 font=("Arial", 11)).grid(row=1, column=1, pady=8, padx=10)
+        self._form_row(form, "Vacant Apartment",
+            lambda r: self._combo(r, self._av_apt, vacant, 42))
+        self._form_row(form, "Tenant ID",
+            lambda r: self._entry(r, self._av_tenant, 44),
+            hint="from the tenant management component")
 
-        tk.Button(self.main_frame, text="Assign Tenant",
-                  command=self.submit_assign_tenant,
-                  bg="#1abc9c", fg="white", font=("Arial", 12), padx=20, pady=8
-                  ).pack(pady=20)
+        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row.pack(fill="x")
+        PillButton(btn_row, "Assign Tenant",
+                   self._submit_assign).pack(side="left")
 
-    # handles the assign tenant form submission
-    def submit_assign_tenant(self):
+    def _submit_assign(self):
         try:
-            # the dropdown shows "1 - Bristol (2-bedroom flat)" so split to get just the id
-            apt_id = int(self.assign_apt_var.get().split(" - ")[0])
-            tenant_id = int(self.assign_tenant_var.get())
-            self.manager.assign_tenant(apt_id, tenant_id)
-            messagebox.showinfo("Success", f"Tenant {tenant_id} assigned to apartment {apt_id}!")
+            apt_id = int(self._av_apt.get().split("—")[0].strip())
+            tid_s  = self._av_tenant.get().strip()
+            if not tid_s:
+                raise ValueError("please enter a tenant id")
+            self.manager.assign_tenant(apt_id, int(tid_s))
+            messagebox.showinfo("Success",
+                f"Tenant {tid_s} assigned to apartment {apt_id}.")
             self.show_apartments()
         except ValueError as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Input Error", str(e))
 
-    # shows all maintenance requests in a table
-    # colour coded - orange for open, green for resolved
+    # ================================================================= #
+    #  MAINTENANCE REQUESTS PAGE                                         #
+    # ================================================================= #
+
     def show_maintenance(self):
-        self.clear_main()
+        self._clear()
+        self._activate("  All Requests")
+        self._page_header("Maintenance Requests",
+                          "Track and resolve property issues")
 
-        tk.Label(self.main_frame, text="Maintenance Requests",
-                 font=("Arial", 16, "bold"), bg="#f0f0f0").pack(pady=15)
+        reqs   = self.manager.get_all_maintenance_requests()
+        open_n = sum(1 for r in reqs if r.status == "open")
+        self._stats_row([
+            (len(reqs),        "Total",    TEXT_MUTED),
+            (open_n,           "Open",     AMBER),
+            (len(reqs)-open_n, "Resolved", TEAL),
+        ])
 
-        frame = tk.Frame(self.main_frame, bg="#f0f0f0")
-        frame.pack(fill="both", expand=True, padx=20)
+        cols    = ("ID","Apt","Description","Priority",
+                   "Status","Raised","Resolved","Cost (£)","Hrs")
+        widths  = [48,48,240,88,82,90,90,85,52]
+        anchors = ["center","center","w","center",
+                   "center","center","center","center","center"]
+        tree = self._table_frame(cols, widths, anchors)
 
-        scrollbar = ttk.Scrollbar(frame)
-        scrollbar.pack(side="right", fill="y")
+        # unicode icons make the priority column easier to read at a glance
+        prio_icons = {"high": "▲ HIGH", "medium": "◆ MED", "low": "▼ LOW"}
 
-        cols = ("ID", "Apartment ID", "Description", "Priority", "Status",
-                "Date Raised", "Date Resolved", "Cost (£)", "Time (hrs)")
-        tree = ttk.Treeview(frame, columns=cols, show="headings",
-                            yscrollcommand=scrollbar.set)
-
-        for col in cols:
-            tree.heading(col, text=col)
-            tree.column(col, width=100, anchor="center")
-
-        scrollbar.config(command=tree.yview)
-
-        # load all requests and add to table
-        requests = self.manager.get_all_maintenance_requests()
-        for req in requests:
-            tag = "open" if req.status == "open" else "resolved"
+        for i, r in enumerate(reqs):
+            row_tag = "odd" if i % 2 else ""
+            prio    = prio_icons.get(r.priority, r.priority.upper())
             tree.insert("", "end", values=(
-                req.request_id, req.apartment_id, req.description,
-                req.priority, req.status, req.date_raised,
-                req.date_resolved or "-", req.cost or "-", req.time_taken or "-"
-            ), tags=(tag,))
+                r.request_id, r.apartment_id, r.description,
+                prio, r.status.upper(), r.date_raised,
+                r.date_resolved or "—",
+                f"£{r.cost:.2f}" if r.cost is not None else "—",
+                r.time_taken or "—"
+            ), tags=(r.status, row_tag))
 
-        tree.tag_configure("open", background="#fdebd0")      # orange for open
-        tree.tag_configure("resolved", background="#d5f5e3")  # green for resolved
-        tree.pack(fill="both", expand=True)
+        self._btn_row([
+            ("✔  Resolve Selected",
+             lambda: self._resolve_popup(tree),
+             TEAL_BG, TEAL, "#0f2e2a"),
+        ])
 
-        tk.Button(self.main_frame, text="Resolve Selected Request",
-                  command=lambda: self.resolve_request(tree),
-                  bg="#1abc9c", fg="white", font=("Arial", 10), padx=10
-                  ).pack(pady=10)
+    # ================================================================= #
+    #  NEW MAINTENANCE REQUEST PAGE                                      #
+    # ================================================================= #
 
-    # form to add a new maintenance request
     def show_maintenance_form(self):
-        self.clear_main()
+        self._clear()
+        self._activate("  New Request")
+        self._page_header("New Maintenance Request",
+                          "Report an issue with a property")
 
-        tk.Label(self.main_frame, text="Add Maintenance Request",
-                 font=("Arial", 16, "bold"), bg="#f0f0f0").pack(pady=15)
+        card = self._form_card()
+        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        form.pack(fill="x")
 
-        form = tk.Frame(self.main_frame, bg="#f0f0f0")
-        form.pack(padx=40, pady=10)
+        apts = self.manager.get_all_apartments()
+        opts = [f"{a.apartment_id}  —  {a.location}  ({a.apt_type})"
+                for a in apts]
 
-        # show all apartments in dropdown so user can pick which one has the issue
-        apartments = self.manager.get_all_apartments()
-        apt_options = [f"{a.apartment_id} - {a.location} ({a.apt_type})"
-                       for a in apartments]
+        if not opts:
+            tk.Label(form, text="No apartments registered yet.",
+                     font=("Helvetica", 12),
+                     bg=BG_CARD, fg=RED, pady=20).pack()
+            return
 
-        tk.Label(form, text="Apartment", font=("Arial", 11),
-                 bg="#f0f0f0").grid(row=0, column=0, pady=8, sticky="w")
-        self.maint_apt_var = tk.StringVar(value=apt_options[0] if apt_options else "")
-        ttk.Combobox(form, textvariable=self.maint_apt_var, values=apt_options,
-                     state="readonly", width=35).grid(row=0, column=1, pady=8, padx=10)
+        self._mv_apt  = tk.StringVar(value=opts[0])
+        self._mv_prio = tk.StringVar(value="medium")
+        self._mv_desc = tk.StringVar()
 
-        tk.Label(form, text="Description", font=("Arial", 11),
-                 bg="#f0f0f0").grid(row=1, column=0, pady=8, sticky="w")
-        self.maint_desc_var = tk.StringVar()
-        tk.Entry(form, textvariable=self.maint_desc_var, width=37,
-                 font=("Arial", 11)).grid(row=1, column=1, pady=8, padx=10)
+        self._form_row(form, "Apartment",
+            lambda r: self._combo(r, self._mv_apt, opts, 44))
+        self._form_row(form, "Priority",
+            lambda r: self._combo(r, self._mv_prio,
+                                  ["low","medium","high"], 24))
+        self._form_row(form, "Description",
+            lambda r: self._entry(r, self._mv_desc, 46))
 
-        tk.Label(form, text="Priority", font=("Arial", 11),
-                 bg="#f0f0f0").grid(row=2, column=0, pady=8, sticky="w")
-        self.maint_priority_var = tk.StringVar(value="medium")
-        ttk.Combobox(form, textvariable=self.maint_priority_var,
-                     values=["low", "medium", "high"],
-                     state="readonly", width=35).grid(row=2, column=1, pady=8, padx=10)
+        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row.pack(fill="x")
+        PillButton(btn_row, "Submit Request",
+                   self._submit_maintenance).pack(side="left")
 
-        tk.Button(self.main_frame, text="Submit Request",
-                  command=self.submit_maintenance,
-                  bg="#1abc9c", fg="white", font=("Arial", 12), padx=20, pady=8
-                  ).pack(pady=20)
-
-    # handle maintenance form submission
-    def submit_maintenance(self):
+    def _submit_maintenance(self):
         try:
-            apt_id = int(self.maint_apt_var.get().split(" - ")[0])
-            description = self.maint_desc_var.get()
-            priority = self.maint_priority_var.get()
-            self.manager.add_maintenance_request(apt_id, description, priority)
-            messagebox.showinfo("Success", "Maintenance request submitted!")
+            apt_id = int(self._mv_apt.get().split("—")[0].strip())
+            self.manager.add_maintenance_request(
+                apt_id, self._mv_desc.get().strip(), self._mv_prio.get())
+            messagebox.showinfo("Success", "Maintenance request submitted.")
             self.show_maintenance()
         except ValueError as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Input Error", str(e))
 
-    # resolve a selected maintenance request
-    # opens a popup to get cost and time from the user
-    def resolve_request(self, tree):
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select a request to resolve")
+    # ================================================================= #
+    #  POPUPS                                                            #
+    # ================================================================= #
+
+    def _popup(self, title, w, h):
+        # toplevel creates a new window on top of the main one
+        # grab_set() makes it modal so you have to close it before using the main window
+        # the geometry calculation centres it over the parent window
+        p = tk.Toplevel(self.root)
+        p.title(title)
+        p.configure(bg=BG_SURFACE)
+        p.resizable(False, False)
+        p.grab_set()
+
+        # update_idletasks() forces tkinter to recalculate window sizes
+        # without this winfo_x() and winfo_width() return 0
+        self.root.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width()  - w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+        p.geometry(f"{w}x{h}+{x}+{y}")
+
+        # same title bar style as the main pages
+        hdr = tk.Frame(p, bg=BG_SURFACE)
+        hdr.pack(fill="x", padx=36, pady=(22, 0))
+        tk.Frame(hdr, bg=TEAL, width=3).pack(side="left", fill="y")
+        tk.Label(hdr, text=title, font=("Helvetica", 13, "bold"),
+                 bg=BG_SURFACE, fg=TEXT_BRIGHT, padx=10).pack(side="left")
+        tk.Frame(p, bg=BORDER, height=1).pack(fill="x", padx=36, pady=(10, 8))
+
+        return p
+
+    def _resolve_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Nothing selected",
+                                   "Select a request to resolve.")
+            return
+        vals = tree.item(sel[0])["values"]
+
+        # vals[4] is the Status column - check its not already resolved
+        if "RESOLVED" in str(vals[4]):
+            messagebox.showinfo("Already resolved",
+                                "This request is already resolved.")
             return
 
-        # get the request id from the first column of the selected row
-        request_id = tree.item(selected[0])["values"][0]
+        p    = self._popup(f"Resolve Request #{vals[0]}", 420, 280)
+        form = tk.Frame(p, bg=BG_SURFACE, padx=36)
+        form.pack(fill="x")
 
-        # popup window for entering cost and time
-        popup = tk.Toplevel(self.root)
-        popup.title("Resolve Request")
-        popup.geometry("300x200")
-        popup.configure(bg="#f0f0f0")
+        tk.Label(p, text=f"Apt {vals[1]}  ·  {vals[2]}",
+                 font=("Helvetica", 9), bg=BG_SURFACE, fg=TEXT_MUTED
+                 ).pack(pady=(0, 14))
 
-        tk.Label(popup, text="Cost (£)", font=("Arial", 11), bg="#f0f0f0").pack(pady=5)
-        cost_var = tk.StringVar()
-        tk.Entry(popup, textvariable=cost_var, font=("Arial", 11)).pack()
+        cost_v = tk.StringVar()
+        time_v = tk.StringVar()
+        for lbl, var in [("Cost (£)", cost_v), ("Time taken (hrs)", time_v)]:
+            row = tk.Frame(form, bg=BG_SURFACE)
+            row.pack(fill="x", pady=6)
+            tk.Label(row, text=lbl, font=("Helvetica", 10),
+                     bg=BG_SURFACE, fg=TEXT_MUTED,
+                     width=18, anchor="w").pack(side="left")
+            self._entry(row, var, 20).pack(side="left", padx=(8,0), ipady=5)
 
-        tk.Label(popup, text="Time Taken (hours)", font=("Arial", 11), bg="#f0f0f0").pack(pady=5)
-        time_var = tk.StringVar()
-        tk.Entry(popup, textvariable=time_var, font=("Arial", 11)).pack()
-
-        # inner function to handle the confirm button in the popup
         def confirm():
             try:
-                cost = float(cost_var.get())
-                time_taken = int(time_var.get())
-                self.manager.resolve_maintenance_request(request_id, cost, time_taken)
-                messagebox.showinfo("Success", "Request resolved successfully!")
-                popup.destroy()
-                self.show_maintenance()  # refresh the list
+                c = cost_v.get().strip()
+                t = time_v.get().strip()
+                if not c or not t:
+                    raise ValueError("both fields are required")
+                self.manager.resolve_maintenance_request(
+                    vals[0], float(c), int(t))
+                messagebox.showinfo("Done", "Request marked as resolved.")
+                p.destroy()
+                self.show_maintenance()
             except ValueError as e:
-                messagebox.showerror("Error", str(e))
+                messagebox.showerror("Input Error", str(e))
 
-        tk.Button(popup, text="Confirm", command=confirm,
-                  bg="#1abc9c", fg="white", font=("Arial", 11), padx=15).pack(pady=15)
+        PillButton(p, "Confirm Resolution", confirm).pack(pady=20)
 
-    # delete a selected apartment
-    def delete_apartment(self, tree):
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select an apartment to delete")
+    def _edit_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Nothing selected",
+                                   "Select an apartment to edit.")
             return
+        vals   = tree.item(sel[0])["values"]
+        apt_id = vals[0]
 
-        apt_id = tree.item(selected[0])["values"][0]
+        p    = self._popup(f"Edit Apartment #{apt_id}", 460, 360)
+        form = tk.Frame(p, bg=BG_SURFACE, padx=36)
+        form.pack(fill="x", pady=8)
 
-        # ask user to confirm before actually deleting
-        if messagebox.askyesno("Confirm", f"Delete apartment {apt_id}?"):
+        # the rent value comes in formatted as "£1,200.00" from the table
+        # so we need to strip the £ and commas before putting it back in an entry field
+        rent_str = str(vals[3]).replace("£","").replace(",","").strip()
+        v_loc    = tk.StringVar(value=vals[1])
+        v_type   = tk.StringVar(value=vals[2])
+        v_rent   = tk.StringVar(value=rent_str)
+        v_rooms  = tk.StringVar(value=str(vals[4]))
+
+        locs  = ["Bristol","London","Manchester","Cardiff"]
+        types = ["Studio","1-bedroom flat","2-bedroom flat",
+                 "3-bedroom house","4-bedroom house"]
+
+        for lbl, var, opts in [
+            ("Location",      v_loc,  locs),
+            ("Property Type", v_type, types),
+        ]:
+            row = tk.Frame(form, bg=BG_SURFACE)
+            row.pack(fill="x", pady=6)
+            tk.Label(row, text=lbl, font=("Helvetica", 10),
+                     bg=BG_SURFACE, fg=TEXT_MUTED,
+                     width=18, anchor="w").pack(side="left")
+            self._combo(row, var, opts, 28).pack(
+                side="left", padx=(8,0), ipady=5)
+
+        for lbl, var in [("Monthly Rent (£)", v_rent), ("Rooms", v_rooms)]:
+            row = tk.Frame(form, bg=BG_SURFACE)
+            row.pack(fill="x", pady=6)
+            tk.Label(row, text=lbl, font=("Helvetica", 10),
+                     bg=BG_SURFACE, fg=TEXT_MUTED,
+                     width=18, anchor="w").pack(side="left")
+            self._entry(row, var, 30).pack(
+                side="left", padx=(8,0), ipady=5)
+
+        def save():
+            try:
+                r_s = v_rent.get().strip()
+                r_n = v_rooms.get().strip()
+                if not r_s or not r_n:
+                    raise ValueError("rent and rooms cannot be empty")
+                self.manager.update_apartment(
+                    apt_id, v_loc.get(), v_type.get(),
+                    float(r_s), int(r_n))
+                messagebox.showinfo("Updated", "Apartment saved.")
+                p.destroy()
+                self.show_apartments()
+            except ValueError as e:
+                messagebox.showerror("Input Error", str(e))
+
+        PillButton(p, "Save Changes", save).pack(pady=20)
+
+    def _delete_apartment(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Nothing selected",
+                                   "Select an apartment to delete.")
+            return
+        apt_id = tree.item(sel[0])["values"][0]
+        # confirm before deleting - the manager will also block it if there are open requests
+        if messagebox.askyesno("Confirm Delete",
+                f"Delete apartment {apt_id}?\nThis cannot be undone."):
             try:
                 self.manager.delete_apartment(apt_id)
-                messagebox.showinfo("Success", "Apartment deleted successfully!")
+                messagebox.showinfo("Deleted", "Apartment removed.")
                 self.show_apartments()
             except ValueError as e:
-                messagebox.showerror("Error", str(e))
+                # this catches the "open maintenance requests" error from apartment.py
+                messagebox.showerror("Cannot Delete", str(e))
 
-    # edit a selected apartment - opens a popup form with current values filled in
-    def edit_apartment(self, tree):
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select an apartment to edit")
+    def _remove_tenant(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Nothing selected", "Select an apartment.")
             return
-
-        values = tree.item(selected[0])["values"]
-        apt_id = values[0]
-
-        popup = tk.Toplevel(self.root)
-        popup.title(f"Edit Apartment {apt_id}")
-        popup.geometry("350x300")
-        popup.configure(bg="#f0f0f0")
-
-        # pre fill the form with the current apartment values
-        fields = [
-            ("Location", values[1], ["Bristol", "London", "Manchester", "Cardiff"]),
-            ("Type", values[2], ["1-bedroom flat", "2-bedroom flat", "3-bedroom house", "Studio"]),
-            ("Monthly Rent", str(values[3]).replace("£", ""), None),
-            ("Rooms", str(values[4]), None),
-        ]
-
-        vars = {}
-        for i, (label, default, options) in enumerate(fields):
-            tk.Label(popup, text=label, font=("Arial", 11),
-                     bg="#f0f0f0").grid(row=i, column=0, padx=10, pady=8, sticky="w")
-            var = tk.StringVar(value=default)
-            if options:
-                ttk.Combobox(popup, textvariable=var, values=options,
-                             state="readonly", width=20).grid(row=i, column=1, padx=10, pady=8)
-            else:
-                tk.Entry(popup, textvariable=var, width=22,
-                         font=("Arial", 11)).grid(row=i, column=1, padx=10, pady=8)
-            vars[label] = var
-
-        def save_edit():
-            try:
-                self.manager.update_apartment(
-                    apt_id,
-                    vars["Location"].get(),
-                    vars["Type"].get(),
-                    float(vars["Monthly Rent"].get()),
-                    int(vars["Rooms"].get())
-                )
-                messagebox.showinfo("Success", "Apartment updated successfully!")
-                popup.destroy()
-                self.show_apartments()
-            except ValueError as e:
-                messagebox.showerror("Error", str(e))
-
-        tk.Button(popup, text="Save Changes", command=save_edit,
-                  bg="#1abc9c", fg="white", font=("Arial", 11), padx=15
-                  ).grid(row=len(fields), column=0, columnspan=2, pady=15)
-
-    # remove tenant from a selected apartment
-    def remove_tenant(self, tree):
-        selected = tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select an apartment")
+        vals   = tree.item(sel[0])["values"]
+        apt_id = vals[0]
+        # vals[5] is the Status column - check the dot symbol for vacant
+        if "Vacant" in str(vals[5]):
+            messagebox.showinfo("Already vacant",
+                                "This apartment has no tenant.")
             return
-
-        apt_id = tree.item(selected[0])["values"][0]
-        status = tree.item(selected[0])["values"][5]
-
-        # cant remove a tenant if theres no tenant there
-        if status == "vacant":
-            messagebox.showwarning("Warning", "This apartment has no tenant to remove")
-            return
-
-        if messagebox.askyesno("Confirm", f"Remove tenant from apartment {apt_id}?"):
+        if messagebox.askyesno("Confirm",
+                f"Remove tenant from apartment {apt_id}?"):
             self.manager.remove_tenant(apt_id)
-            messagebox.showinfo("Success", "Tenant removed successfully!")
+            messagebox.showinfo("Done", "Tenant removed. Apartment is now vacant.")
             self.show_apartments()
 
 
-# entry point - run this file directly to open the apartment management window
+# ------------------------------------------------------------------ #
+#  entry point                                                        #
+# ------------------------------------------------------------------ #
 if __name__ == "__main__":
     root = tk.Tk()
-    app = ApartmentApp(root)
+    app  = ApartmentApp(root)
     root.mainloop()

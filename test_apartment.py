@@ -1,45 +1,49 @@
 # Anna Boychenko - 24030024
-# Unit tests for my Apartment Management component
-# used unittest which we covered in labs - it lets you run automated tests
-# the brief said to test all classes so ive done that here
+# unit tests for the apartment management component
+# using unittest which we covered in labs - lets you run automated tests
+# the brief says to test all classes and cover invalid/edge case inputs
+# i used a separate test database so the real data never gets touched
 
 import unittest
 import sqlite3
 import os
 from apartment import Apartment, MaintenanceRequest, ApartmentManager
 
-# using a separate test database so i dont mess up the real one when testing
+# separate test db so real data is never touched during testing
 TEST_DB = "test_pams.db"
 
+
 def setup_test_db():
-    """create a fresh test database with the same tables as the real one"""
+    """create a clean test database with the same schema as the real one"""
     conn = sqlite3.connect(TEST_DB)
     conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
 
+    # apartments table - matches database.py schema exactly
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS apartments (
-            apartment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            location TEXT,
-            apt_type TEXT,
-            monthly_rent REAL,
-            num_rooms INTEGER,
-            status TEXT DEFAULT 'vacant',
-            tenant_id INTEGER DEFAULT NULL
+            apartment_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            location       TEXT    NOT NULL,
+            apt_type       TEXT    NOT NULL,
+            monthly_rent   REAL    NOT NULL,
+            num_rooms      INTEGER NOT NULL,
+            status         TEXT    NOT NULL DEFAULT 'vacant',
+            tenant_id      INTEGER DEFAULT NULL
         )
     """)
 
+    # maintenance requests table - matches database.py schema exactly
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS maintenance_requests (
-            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            apartment_id INTEGER,
-            description TEXT,
-            priority TEXT,
-            status TEXT DEFAULT 'open',
-            date_raised TEXT,
-            date_resolved TEXT,
-            cost REAL,
-            time_taken INTEGER,
+            request_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            apartment_id   INTEGER NOT NULL,
+            description    TEXT    NOT NULL,
+            priority       TEXT    NOT NULL DEFAULT 'low',
+            status         TEXT    NOT NULL DEFAULT 'open',
+            date_raised    TEXT    NOT NULL,
+            date_resolved  TEXT    DEFAULT NULL,
+            cost           REAL    DEFAULT NULL,
+            time_taken     INTEGER DEFAULT NULL,
             FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
         )
     """)
@@ -48,178 +52,428 @@ def setup_test_db():
     conn.close()
 
 
-# swap out the real database connection for the test one
+# swap get_connection in the apartment module to use the test db instead
 import apartment as apt_module
-original_get_connection = apt_module.get_connection
+_original_get_connection = apt_module.get_connection
 
-def test_get_connection():
+
+def _test_get_connection():
     conn = sqlite3.connect(TEST_DB)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
-# tests for the Apartment class itself (not database stuff, just the class logic)
+# ======================================================================= #
+#  APARTMENT CLASS TESTS (no db needed - testing the object itself)       #
+# ======================================================================= #
+
 class TestApartmentClass(unittest.TestCase):
 
-    # new apartment should always start as vacant
-    def test_initial_status_is_vacant(self):
+    def test_default_status_is_vacant(self):
+        """new apartment should always start as vacant"""
         apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
         self.assertEqual(apt.status, "vacant")
 
-    # assigning a tenant should change status to occupied and store the tenant id
-    def test_assign_tenant(self):
+    def test_default_tenant_id_is_none(self):
+        """tenant_id should be None when no tenant is assigned yet"""
+        apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
+        self.assertIsNone(apt.tenant_id)
+
+    def test_assign_tenant_changes_status(self):
+        """assigning a tenant should set status to occupied"""
         apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
         apt.assign_tenant(101)
         self.assertEqual(apt.status, "occupied")
+
+    def test_assign_tenant_stores_id(self):
+        """assigning a tenant should store their id on the object"""
+        apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
+        apt.assign_tenant(101)
         self.assertEqual(apt.tenant_id, 101)
 
-    # removing a tenant should set status back to vacant and tenant_id back to None
-    def test_remove_tenant(self):
+    def test_remove_tenant_resets_status(self):
+        """removing a tenant should set status back to vacant"""
         apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2, "occupied", 101)
         apt.remove_tenant()
         self.assertEqual(apt.status, "vacant")
+
+    def test_remove_tenant_clears_tenant_id(self):
+        """removing a tenant should set tenant_id back to None"""
+        apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2, "occupied", 101)
+        apt.remove_tenant()
         self.assertIsNone(apt.tenant_id)
 
-    # just checking the str method works and includes the location
-    def test_str_representation(self):
+    def test_str_contains_location(self):
+        """str output should include the apartment location"""
         apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
         self.assertIn("Bristol", str(apt))
 
+    def test_str_contains_status(self):
+        """str output should include the current status"""
+        apt = Apartment(1, "Bristol", "2-bedroom flat", 1200.00, 2)
+        self.assertIn("vacant", str(apt))
 
-# tests for the MaintenanceRequest class
+
+# ======================================================================= #
+#  MAINTENANCE REQUEST CLASS TESTS                                         #
+# ======================================================================= #
+
 class TestMaintenanceRequestClass(unittest.TestCase):
 
-    # new requests should always be open
-    def test_initial_status_is_open(self):
-        req = MaintenanceRequest(1, 1, "Broken boiler", "high")
+    def test_default_status_is_open(self):
+        """new maintenance requests should always start as open"""
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
         self.assertEqual(req.status, "open")
 
-    # resolving should update status, cost and time taken
-    def test_resolve_request(self):
-        req = MaintenanceRequest(1, 1, "Broken boiler", "high")
+    def test_default_date_raised_set(self):
+        """date_raised should default to todays date if not provided"""
+        from datetime import date
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
+        self.assertEqual(req.date_raised, str(date.today()))
+
+    def test_resolve_sets_status(self):
+        """resolving a request should set status to resolved"""
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
         req.resolve(150.00, 3)
         self.assertEqual(req.status, "resolved")
+
+    def test_resolve_stores_cost(self):
+        """resolving should store the cost on the object"""
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
+        req.resolve(150.00, 3)
         self.assertEqual(req.cost, 150.00)
+
+    def test_resolve_stores_time_taken(self):
+        """resolving should store the time taken on the object"""
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
+        req.resolve(150.00, 3)
         self.assertEqual(req.time_taken, 3)
 
+    def test_resolve_sets_date_resolved(self):
+        """resolving should set date_resolved to todays date"""
+        from datetime import date
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
+        req.resolve(150.00, 3)
+        self.assertEqual(req.date_resolved, str(date.today()))
 
-# tests for ApartmentManager - this tests the actual database operations
+    def test_str_contains_priority(self):
+        """str output should include the priority level"""
+        req = MaintenanceRequest(1, 1, "broken boiler", "high")
+        self.assertIn("high", str(req))
+
+
+# ======================================================================= #
+#  APARTMENT MANAGER TESTS (database operations)                          #
+# ======================================================================= #
+
 class TestApartmentManager(unittest.TestCase):
 
-    # runs before each test - sets up a clean test db
     def setUp(self):
+        """runs before each test - fresh test db every time"""
         setup_test_db()
-        apt_module.get_connection = test_get_connection  # swap to test db
+        apt_module.get_connection = _test_get_connection
 
-    # runs after each test - deletes the test db so each test starts fresh
     def tearDown(self):
-        apt_module.get_connection = original_get_connection
+        """runs after each test - delete test db so next test starts clean"""
+        apt_module.get_connection = _original_get_connection
         if os.path.exists(TEST_DB):
             os.remove(TEST_DB)
 
-    # basic test - add an apartment and check it shows up
-    def test_add_apartment(self):
+    # ------------------------------------------------------------------ #
+    #  ADD APARTMENT                                                      #
+    # ------------------------------------------------------------------ #
+
+    def test_add_apartment_saves_to_db(self):
+        """adding an apartment should persist it to the database"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apartments = manager.get_all_apartments()
         self.assertEqual(len(apartments), 1)
-        self.assertEqual(apartments[0].location, "Bristol")
 
-    # should raise ValueError if rent is negative
-    def test_add_apartment_invalid_rent(self):
+    def test_add_apartment_correct_location(self):
+        """saved apartment should have the correct location"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        self.assertEqual(manager.get_all_apartments()[0].location, "Bristol")
+
+    def test_add_apartment_starts_vacant(self):
+        """newly added apartment should be vacant by default"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        self.assertEqual(manager.get_all_apartments()[0].status, "vacant")
+
+    def test_add_apartment_rejects_zero_rent(self):
+        """rent of 0 should raise ValueError"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.add_apartment("Bristol", "2-bedroom flat", 0, 2)
+
+    def test_add_apartment_rejects_negative_rent(self):
+        """negative rent should raise ValueError"""
         manager = ApartmentManager()
         with self.assertRaises(ValueError):
             manager.add_apartment("Bristol", "2-bedroom flat", -100, 2)
 
-    # should raise ValueError if location is empty
-    def test_add_apartment_empty_location(self):
+    def test_add_apartment_rejects_empty_location(self):
+        """empty location string should raise ValueError"""
         manager = ApartmentManager()
         with self.assertRaises(ValueError):
             manager.add_apartment("", "2-bedroom flat", 1200.00, 2)
 
-    # assign tenant and check the status and tenant id updated in the db
-    def test_assign_tenant(self):
+    def test_add_apartment_rejects_zero_rooms(self):
+        """zero rooms should raise ValueError"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 0)
+
+    def test_add_apartment_rejects_empty_type(self):
+        """empty apartment type should raise ValueError"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.add_apartment("Bristol", "", 1200.00, 2)
+
+    # ------------------------------------------------------------------ #
+    #  GET APARTMENT                                                      #
+    # ------------------------------------------------------------------ #
+
+    def test_get_apartment_by_id_returns_correct(self):
+        """should return the right apartment when searching by id"""
+        manager = ApartmentManager()
+        manager.add_apartment("London", "Studio", 950.00, 1)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        found  = manager.get_apartment_by_id(apt_id)
+        self.assertIsNotNone(found)
+        self.assertEqual(found.location, "London")
+
+    def test_get_apartment_by_id_returns_none_if_missing(self):
+        """should return None for an id that doesnt exist"""
+        manager = ApartmentManager()
+        result = manager.get_apartment_by_id(9999)
+        self.assertIsNone(result)
+
+    def test_get_apartments_by_location(self):
+        """should filter apartments correctly by city"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol",    "Studio",         700.00, 1)
+        manager.add_apartment("Manchester", "1-bedroom flat", 780.00, 1)
+        results = manager.get_apartments_by_location("Bristol")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].location, "Bristol")
+
+    # ------------------------------------------------------------------ #
+    #  UPDATE APARTMENT                                                   #
+    # ------------------------------------------------------------------ #
+
+    def test_update_apartment_changes_rent(self):
+        """update should save the new rent to the database"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.update_apartment(apt_id, "Bristol", "2-bedroom flat", 1350.00, 2)
+        updated = manager.get_apartment_by_id(apt_id)
+        self.assertEqual(updated.monthly_rent, 1350.00)
+
+    def test_update_apartment_rejects_invalid_rent(self):
+        """update with zero rent should raise ValueError"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        with self.assertRaises(ValueError):
+            manager.update_apartment(apt_id, "Bristol", "2-bedroom flat", 0, 2)
+
+    # ------------------------------------------------------------------ #
+    #  ASSIGN / REMOVE TENANT                                             #
+    # ------------------------------------------------------------------ #
+
+    def test_assign_tenant_changes_status_in_db(self):
+        """assigning a tenant should update status to occupied in the db"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
         manager.assign_tenant(apt_id, 101)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "occupied")
+
+    def test_assign_tenant_stores_tenant_id_in_db(self):
+        """assigning a tenant should save their id in the db"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.assign_tenant(apt_id, 101)
+        updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.tenant_id, 101)
 
-    # shouldnt be able to assign a second tenant to an occupied apartment
-    def test_assign_tenant_to_occupied_apartment(self):
+    def test_assign_tenant_to_occupied_raises_error(self):
+        """assigning a second tenant to an occupied apartment should fail"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
+        apt_id = manager.get_all_apartments()[0].apartment_id
         manager.assign_tenant(apt_id, 101)
         with self.assertRaises(ValueError):
-            manager.assign_tenant(apt_id, 102)  # this should fail
+            manager.assign_tenant(apt_id, 202)
 
-    # remove tenant and check it goes back to vacant
-    def test_remove_tenant(self):
+    def test_assign_tenant_to_nonexistent_apartment_raises_error(self):
+        """assigning a tenant to a missing apartment id should fail"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.assign_tenant(9999, 101)
+
+    def test_remove_tenant_resets_to_vacant_in_db(self):
+        """removing a tenant should set status back to vacant in the db"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
+        apt_id = manager.get_all_apartments()[0].apartment_id
         manager.assign_tenant(apt_id, 101)
         manager.remove_tenant(apt_id)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "vacant")
         self.assertIsNone(updated.tenant_id)
 
-    # add a maintenance request and check it saved correctly
-    def test_add_maintenance_request(self):
+    # ------------------------------------------------------------------ #
+    #  DELETE APARTMENT                                                   #
+    # ------------------------------------------------------------------ #
+
+    def test_delete_apartment_removes_from_db(self):
+        """deleted apartment should no longer appear in get_all_apartments"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
-        manager.add_maintenance_request(apt_id, "Broken boiler", "high")
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.delete_apartment(apt_id)
+        self.assertEqual(len(manager.get_all_apartments()), 0)
+
+    def test_delete_apartment_blocked_if_open_requests(self):
+        """deleting an apartment with open maintenance requests should fail"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
+        with self.assertRaises(ValueError):
+            manager.delete_apartment(apt_id)
+
+    # ------------------------------------------------------------------ #
+    #  MAINTENANCE REQUESTS                                               #
+    # ------------------------------------------------------------------ #
+
+    def test_add_maintenance_request_saves_to_db(self):
+        """maintenance request should appear in get_all_maintenance_requests"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
         requests = manager.get_all_maintenance_requests()
         self.assertEqual(len(requests), 1)
-        self.assertEqual(requests[0].priority, "high")
 
-    # invalid priority should be rejected
-    def test_add_maintenance_invalid_priority(self):
+    def test_add_maintenance_request_correct_priority(self):
+        """saved request should have the priority that was passed in"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
+        self.assertEqual(manager.get_all_maintenance_requests()[0].priority, "high")
+
+    def test_add_maintenance_request_invalid_priority_raises_error(self):
+        """priority values outside low/medium/high should raise ValueError"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id = manager.get_all_apartments()[0].apartment_id
         with self.assertRaises(ValueError):
-            manager.add_maintenance_request(apt_id, "Broken boiler", "urgent")  # not a valid priority
+            manager.add_maintenance_request(apt_id, "broken boiler", "urgent")
 
-    # resolve a request and check status, cost and time updated
-    def test_resolve_maintenance_request(self):
+    def test_add_maintenance_request_empty_description_raises_error(self):
+        """empty description should raise ValueError"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
-        manager.add_maintenance_request(apt_id, "Broken boiler", "high")
-        requests = manager.get_all_maintenance_requests()
-        req_id = requests[0].request_id
-        manager.resolve_maintenance_request(req_id, 150.00, 3)
-        updated = manager.get_all_maintenance_requests()
-        self.assertEqual(updated[0].status, "resolved")
-        self.assertEqual(updated[0].cost, 150.00)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        with self.assertRaises(ValueError):
+            manager.add_maintenance_request(apt_id, "", "high")
 
-    # negative cost should be rejected
-    def test_resolve_maintenance_negative_cost(self):
+    def test_add_maintenance_request_nonexistent_apartment_raises_error(self):
+        """adding a request for a missing apartment id should fail"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.add_maintenance_request(9999, "broken boiler", "high")
+
+    def test_resolve_maintenance_request_changes_status(self):
+        """resolved request should have status 'resolved' in the db"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id  = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
+        req_id  = manager.get_all_maintenance_requests()[0].request_id
+        manager.resolve_maintenance_request(req_id, 150.00, 3)
+        updated = manager.get_all_maintenance_requests()[0]
+        self.assertEqual(updated.status, "resolved")
+
+    def test_resolve_maintenance_request_stores_cost(self):
+        """resolved request should have the correct cost saved"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id  = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
+        req_id  = manager.get_all_maintenance_requests()[0].request_id
+        manager.resolve_maintenance_request(req_id, 150.00, 3)
+        self.assertEqual(manager.get_all_maintenance_requests()[0].cost, 150.00)
+
+    def test_resolve_maintenance_negative_cost_raises_error(self):
+        """negative cost should raise ValueError"""
         manager = ApartmentManager()
         with self.assertRaises(ValueError):
             manager.resolve_maintenance_request(1, -50, 2)
 
-    # delete an apartment and check its gone
-    def test_delete_apartment(self):
+    def test_resolve_maintenance_zero_time_raises_error(self):
+        """zero time taken should raise ValueError"""
+        manager = ApartmentManager()
+        with self.assertRaises(ValueError):
+            manager.resolve_maintenance_request(1, 50.00, 0)
+
+    def test_get_requests_by_apartment(self):
+        """should only return requests for the specified apartment"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol",    "2-bedroom flat", 1200.00, 2)
+        manager.add_apartment("Manchester", "1-bedroom flat",  780.00, 1)
+        apt1 = manager.get_all_apartments()[0].apartment_id
+        apt2 = manager.get_all_apartments()[1].apartment_id
+        manager.add_maintenance_request(apt1, "broken boiler",  "high")
+        manager.add_maintenance_request(apt2, "leaking tap",    "low")
+        results = manager.get_requests_by_apartment(apt1)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].apartment_id, apt1)
+
+    # ------------------------------------------------------------------ #
+    #  REPORTING HELPERS                                                  #
+    # ------------------------------------------------------------------ #
+
+    def test_occupancy_summary_correct_counts(self):
+        """summary should correctly count total, occupied and vacant"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
-        apartments = manager.get_all_apartments()
-        apt_id = apartments[0].apartment_id
-        manager.delete_apartment(apt_id)
-        self.assertEqual(len(manager.get_all_apartments()), 0)
+        manager.add_apartment("London",  "Studio",          950.00, 1)
+        apt_id = manager.get_all_apartments()[0].apartment_id
+        manager.assign_tenant(apt_id, 101)
+        summary = manager.get_occupancy_summary()
+        self.assertEqual(summary["total"],    2)
+        self.assertEqual(summary["occupied"], 1)
+        self.assertEqual(summary["vacant"],   1)
+
+    def test_occupancy_summary_empty(self):
+        """occupancy rate should be 0.0 when there are no apartments"""
+        manager  = ApartmentManager()
+        summary  = manager.get_occupancy_summary()
+        self.assertEqual(summary["rate"], 0.0)
+
+    def test_maintenance_cost_summary(self):
+        """cost summary should sum only resolved request costs"""
+        manager = ApartmentManager()
+        manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
+        apt_id  = manager.get_all_apartments()[0].apartment_id
+        manager.add_maintenance_request(apt_id, "broken boiler", "high")
+        req_id  = manager.get_all_maintenance_requests()[0].request_id
+        manager.resolve_maintenance_request(req_id, 200.00, 2)
+        summary = manager.get_maintenance_cost_summary()
+        self.assertEqual(summary["total_cost"], 200.00)
+        self.assertEqual(summary["resolved"],   1)
 
 
-# run the tests when this file is executed directly
+# run with: python test_apartment.py
 if __name__ == "__main__":
     unittest.main(verbosity=2)
