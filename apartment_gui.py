@@ -11,7 +11,7 @@
 #   - maintenance requests list
 #   - new maintenance request form
 #
-# TODO: might add a search/filter bar to the apartments table if i have time
+# TODO: might add a search/filter bar to the apartments table 
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -27,17 +27,15 @@ if platform.system() == "Windows":
     except Exception:
         pass
 
-# colour palette - went through a lot of trial and error to get these right
-# the hex values might look random but they all work together i promise
-# tried purple first but it looked too generic, teal feels more unique
+
 BG_BASE      = "#111318"   # main background - almost black
 BG_SURFACE   = "#181b24"   # sidebar background
 BG_CARD      = "#1e2130"   # cards and table background
 BG_INPUT     = "#252a3a"   # entry field background
 BG_ROW_ODD   = "#222638"   # alternate row colour for the tables
 
-TEAL         = "#2dd4bf"   # main accent colour
-TEAL_DIM     = "#1fa898"   # slightly darker for hover states
+TEAL         = "#ffffff"   # changed accent to white
+TEAL_DIM     = "#f2f2f2"   # changed hover to slightly different white
 TEAL_BG      = "#0d2622"   # teal tinted background for buttons
 
 AMBER        = "#f59e0b"   # used for warnings and open maintenance requests
@@ -68,7 +66,7 @@ class PillButton(tk.Frame):
         self._bg       = bg
         self._hover_bg = hover_bg
         self._lbl = tk.Label(self, text=text,
-                             font=("Helvetica", font_size, "bold"),
+                             font=("Helvetica", font_size,),
                              bg=bg, fg=fg, padx=padx, pady=pady,
                              cursor="hand2")
         self._lbl.pack()
@@ -166,7 +164,10 @@ class ApartmentApp:
         s.map("Apt.TCombobox",
               fieldbackground=[("readonly", BG_INPUT)],
               foreground=[("readonly", TEXT_MAIN)],
-              selectbackground=[("readonly", TEAL)])
+              selectbackground=[("readonly", "#2a2f45")])
+        
+        self.root.option_add("*TCombobox*Listbox.background", BG_INPUT)
+        self.root.option_add("*TCombobox*Listbox.foreground", TEXT_MAIN)
 
     # ================================================================= #
     #  SIDEBAR                                                           #
@@ -175,7 +176,7 @@ class ApartmentApp:
     def _build_sidebar(self):
         # width=222 and pack_propagate(False) stops the sidebar from shrinking
         # to fit its contents - took me ages to figure out why it kept collapsing
-        sb = tk.Frame(self.root, bg=BG_SURFACE, width=222)
+        sb = tk.Frame(self.root, bg=BG_SURFACE, width=300)
         sb.pack(side="left", fill="y")
         sb.pack_propagate(False)
         self._sb = sb
@@ -183,16 +184,12 @@ class ApartmentApp:
         # logo area at the top of the sidebar
         logo = tk.Frame(sb, bg=BG_SURFACE)
         logo.pack(fill="x", padx=22, pady=(30, 20))
-        icon = tk.Frame(logo, bg=TEAL, width=34, height=34)
-        icon.pack(side="left")
-        icon.pack_propagate(False)
+
         # using place() here instead of pack because its the only way to properly
         # centre the letter inside the fixed-size frame
-        tk.Label(icon, text="P", font=("Helvetica", 14, "bold"),
-                 bg=TEAL, fg=BG_BASE).place(relx=.5, rely=.5, anchor="center")
         txt = tk.Frame(logo, bg=BG_SURFACE)
         txt.pack(side="left", padx=(10, 0))
-        tk.Label(txt, text="PAMS", font=("Helvetica", 14, "bold"),
+        tk.Label(txt, text="PAMS", font=("Helvetica", 14),
                  bg=BG_SURFACE, fg=TEXT_BRIGHT).pack(anchor="w")
         tk.Label(txt, text="Management System", font=("Helvetica", 7),
                  bg=BG_SURFACE, fg=TEXT_MUTED).pack(anchor="w")
@@ -210,13 +207,6 @@ class ApartmentApp:
         self._nav_row(sb, "  New Request",   self.show_maintenance_form)
 
         # spacer then credit
-        tk.Frame(sb, bg=BG_SURFACE).pack(expand=True, fill="both")
-        tk.Frame(sb, bg=BORDER, height=1).pack(fill="x", padx=16)
-        tk.Label(sb, text="Anna Boychenko  ·  24030024",
-                 font=("Helvetica", 7), bg=BG_SURFACE, fg=TEXT_MUTED
-                 ).pack(pady=(7, 3))
-        tk.Label(sb, text="PAMS v1.0", font=("Helvetica", 7),
-                 bg=BG_SURFACE, fg=TEXT_DIVIDER).pack(pady=(0, 14))
 
     def _section_lbl(self, parent, text):
         tk.Label(parent, text=text,
@@ -574,7 +564,7 @@ class ApartmentApp:
         tree = self._table_frame(cols, widths, anchors)
 
         # unicode icons make the priority column easier to read at a glance
-        prio_icons = {"high": "▲ HIGH", "medium": "◆ MED", "low": "▼ LOW"}
+        prio_icons = {"High": "▲ HIGH", "Medium": "◆ MED", "Low": "▼ LOW"}
 
         for i, r in enumerate(reqs):
             row_tag = "odd" if i % 2 else ""
@@ -618,14 +608,14 @@ class ApartmentApp:
             return
 
         self._mv_apt  = tk.StringVar(value=opts[0])
-        self._mv_prio = tk.StringVar(value="medium")
+        self._mv_prio = tk.StringVar(value="Medium")
         self._mv_desc = tk.StringVar()
 
         self._form_row(form, "Apartment",
             lambda r: self._combo(r, self._mv_apt, opts, 44))
         self._form_row(form, "Priority",
             lambda r: self._combo(r, self._mv_prio,
-                                  ["low","medium","high"], 24))
+                                  ["Low","Medium","High"], 24))
         self._form_row(form, "Description",
             lambda r: self._entry(r, self._mv_desc, 46))
 
@@ -636,9 +626,13 @@ class ApartmentApp:
 
     def _submit_maintenance(self):
         try:
-            apt_id = int(self._mv_apt.get().split("—")[0].strip())
-            self.manager.add_maintenance_request(
-                apt_id, self._mv_desc.get().strip(), self._mv_prio.get())
+            raw    = self._mv_apt.get()
+            apt_id = int(raw.split("—")[0].strip())
+            desc   = self._mv_desc.get().strip()
+            prio   = self._mv_prio.get().strip()
+            if not desc:
+                raise ValueError("description cannot be empty")
+            self.manager.add_maintenance_request(apt_id, desc, prio)
             messagebox.showinfo("Success", "Maintenance request submitted.")
             self.show_maintenance()
         except ValueError as e:
@@ -689,7 +683,7 @@ class ApartmentApp:
                                 "This request is already resolved.")
             return
 
-        p    = self._popup(f"Resolve Request #{vals[0]}", 420, 280)
+        p    = self._popup(f"Resolve Request #{vals[0]}", 460, 500)
         form = tk.Frame(p, bg=BG_SURFACE, padx=36)
         form.pack(fill="x")
 
@@ -732,7 +726,7 @@ class ApartmentApp:
         vals   = tree.item(sel[0])["values"]
         apt_id = vals[0]
 
-        p    = self._popup(f"Edit Apartment #{apt_id}", 460, 360)
+        p    = self._popup(f"Edit Apartment #{apt_id}", 460, 500)
         form = tk.Frame(p, bg=BG_SURFACE, padx=36)
         form.pack(fill="x", pady=8)
 

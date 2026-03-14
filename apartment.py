@@ -254,7 +254,7 @@ class ApartmentManager:
         """
         if not description or not description.strip():
             raise ValueError("description cannot be empty")
-        if priority not in ("low", "medium", "high"):
+        if priority not in ("Low", "Medium", "High"):
             raise ValueError("priority must be low, medium, or high")
 
         # check the apartment actually exists before adding a request for it
