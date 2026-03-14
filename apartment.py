@@ -252,10 +252,14 @@ class ApartmentManager:
         front-desk staff or tenants (via front desk) create these
         maintenance staff will then pick them up from get_all_maintenance_requests()
         """
+
+        priority = priority.strip().capitalize()
+
+
         if not description or not description.strip():
             raise ValueError("description cannot be empty")
         if priority not in ("Low", "Medium", "High"):
-            raise ValueError("priority must be low, medium, or high")
+            raise ValueError("priority must be Low, Medium, or High")
 
         # check the apartment actually exists before adding a request for it
         if not self.get_apartment_by_id(apartment_id):
