@@ -1,0 +1,26 @@
+
+# 3. Now copy and paste this into the nano editor:
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.11.5
+    steps:
+      - checkout
+      - run: python3 main.py
+
+  test:
+    docker:
+      - image: cimg/python:3.11.5
+    steps:
+      - checkout
+      - run: python3 main-test.py
+
+workflows:
+  build_and_test:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
