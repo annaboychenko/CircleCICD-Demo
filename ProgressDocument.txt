@@ -1,4 +1,7 @@
 Anna:
+-started the overall project
+    -tkinter for the gui because thats what we used in all the labs
+    -spent ages trying to make this look decent, went through like 3 different colour schemes before settling on the dark teal one
 -has done apartment stuff
     -creating apartments
     -tenant assigned to track occupancy and maintenace requests, can remove a tenant from the apartment 

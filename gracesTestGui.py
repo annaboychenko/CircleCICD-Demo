@@ -1,8 +1,5 @@
-# Anna Boychenko - 24030024
-# Apartment Management GUI - PAMS group project
-# tkinter for the gui because thats what we used in all the labs
-# spent ages trying to make this look decent, went through like 3 different colour schemes
-# before settling on this dark teal one
+#GUI - PAMS group project
+
 #
 # pages in this file:
 #   - apartments overview (with stats)
@@ -11,6 +8,9 @@
 #   - assign tenant to apartment
 #   - maintenance requests list
 #   - new maintenance request form
+#   - payment overview
+#   - generate invoice
+#   - record payment
 #
 # TODO: might add a search/filter bar to the apartments table 
 
