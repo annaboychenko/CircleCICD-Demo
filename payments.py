@@ -1,11 +1,12 @@
 import sqlite3
 from database import get_connection
 from datetime import date
+from datetime import datetime
 
 
 class FinanceManager:
 
-    # ---------------------------------------------------------
+# ---------------------------------------------------------
 #  INVOICE CREATION
 # ---------------------------------------------------------
 
@@ -56,7 +57,10 @@ class FinanceManager:
             UPDATE invoices
             SET status = 'overdue'
             WHERE status = 'unpaid'
-            AND due_date < DATE('now')
+            AND DATE (substr(due_date, 7, 4) || '-' ||
+                substr(due_date, 4, 2) || '-' ||
+                substr(due_date, 1, 2)
+            )< DATE('now')
         """)
 
         conn.commit()
@@ -110,7 +114,7 @@ class FinanceManager:
                 t.full_name, t.tenant_id, i.apartment_id
             FROM invoices i
             JOIN tenants t ON i.tenant_id = t.tenant_id
-            WHERE i.status = 'unpaid'
+            WHERE i.status IN ('unpaid', 'overdue')
             ORDER BY i.due_date ASC
         """)
 
@@ -174,22 +178,66 @@ class FinanceManager:
         conn = get_connection()
         cursor = conn.cursor()
 
-        # update payment
+        # 1. Get the invoice due date
+        cursor.execute("SELECT due_date FROM invoices WHERE invoice_id = ?", (invoice_id,))
+        row = cursor.fetchone()
+
+        if not row:
+            conn.close()
+            raise ValueError("Invoice not found")
+
+        due_date_str = row[0]
+
+        # Convert dd-mm-yyyy → date object
+        try:
+            due_date = datetime.strptime(due_date_str, "%d-%m-%Y").date()
+        except:
+            # If your DB stores yyyy-mm-dd, use this instead:
+            due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+
+        today = date.today()
+
+        # 2. Decide status
+        if today > due_date:
+            new_status = "paid (late)"
+        else:
+            new_status = "paid"
+
+        # 3. Update payments table
         cursor.execute("""
             UPDATE payments
-            SET paid_date = date('now'), status = 'paid'
+            SET paid_date = date('now'), status = ?
             WHERE invoice_id = ?
-        """, (invoice_id,))
+        """, (new_status, invoice_id))
 
-        # update invoice
+        # 4. Update invoices table
         cursor.execute("""
             UPDATE invoices
-            SET status = 'paid'
+            SET status = ?
             WHERE invoice_id = ?
-        """, (invoice_id,))
+        """, (new_status, invoice_id))
 
         conn.commit()
         conn.close()
+
+
+
+    # ---------------------------------------------------------
+    #  GET PAYMENT CONFIRMATION
+    # ---------------------------------------------------------
+
+
+    def get_payment_id_by_invoice(self, invoice_id):
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT payment_id FROM payments WHERE invoice_id = ?", (invoice_id,))
+        row = cursor.fetchone()
+
+        conn.close()
+        return row[0] if row else None
+
+
 
 
     # ---------------------------------------------------------
@@ -202,7 +250,7 @@ class FinanceManager:
 
         cursor.execute("""
             SELECT p.payment_id, p.amount, p.paid_date,
-                t.full_name, a.location, i.invoice_id
+                t.full_name, a.apartment_id, a.location, a.apt_type, i.invoice_id
             FROM payments p
             JOIN tenants t ON p.tenant_id = t.tenant_id
             JOIN apartments a ON p.apartment_id = a.apartment_id
@@ -216,11 +264,12 @@ class FinanceManager:
         if not row:
             return None
 
+        apartment_str = f"{row[4]} - {row[5]} ({row[6]})"
         return {
             "payment_id": row[0],
             "amount": row[1],
             "paid_date": row[2],
             "tenant": row[3],
-            "apartment": row[4],
-            "invoice_id": row[5]
+            "apartment": apartment_str,
+            "invoice_id": row[7]
         }

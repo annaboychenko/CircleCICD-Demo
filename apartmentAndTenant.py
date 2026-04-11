@@ -206,13 +206,13 @@ class ApartmentManager:
     # ------------------------------------------------------------------ #
 
 
-    def add_tenant(self, name, email, phone, ni, occ):
+    def add_tenant(self, name, email, phone, ni, occ, ref):
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO tenants (full_name, email, phone, ni_number, occupation)
-            VALUES (?, ?, ?, ?, ?)
-        """, (name, email, phone, ni, occ))
+            INSERT INTO tenants (full_name, email, phone, ni_number, occupation, tenant_references)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (name, email, phone, ni, occ, ref))
         conn.commit()
         conn.close()
 
@@ -317,20 +317,24 @@ class ApartmentManager:
         tenants = []
         for row in rows:
             tenant = type("Tenant", (), {})()  # simple dynamic object
-            tenant.tenant_id    = row[0]
-            tenant.full_name    = row[1]
-            tenant.email        = row[2]
-            tenant.phone        = row[3]
-            tenant.ni_number    = row[4]
-            tenant.occupation   = row[5]
-            tenant.apartment_id = row[6]
-            tenant.lease_start  = row[7]
-            tenant.lease_end    = row[8]
-            tenant.monthly_rent = row[9]
+            tenant.tenant_id        = row[0]
+            tenant.location         = row[1]
+            tenant.full_name        = row[2]
+            tenant.email            = row[3]
+            tenant.phone            = row[4]
+            tenant.ni_number        = row[5]
+            tenant.occupation       = row[6]
+            tenant.tenant_references = row[7]
+            tenant.apartment_id     = row[8]
+            tenant.lease_period     = row[9]
+            tenant.lease_start      = row[10]
+            tenant.lease_end        = row[11]
+            tenant.deposit_amount   = row[12]
+            tenant.monthly_rent     = row[13]
             tenants.append(tenant)
 
         return tenants
-    #broken
+
 
     # ------------------------------------------------------------------ #
     #  MAINTENANCE REQUESTS                                               #
@@ -414,7 +418,7 @@ class ApartmentManager:
         conn.close()
 
     # ------------------------------------------------------------------ #
-    #  REPORTING HELPERS                                                  #
+    #  REPORTING HELPERS                                                 #
     # ------------------------------------------------------------------ #
 
     def get_occupancy_summary(self):

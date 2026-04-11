@@ -22,7 +22,7 @@ from tkcalendar import DateEntry
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from apartment import ApartmentManager
+from apartmentAndTenant import ApartmentManager
 from payments import FinanceManager
 import platform
 
@@ -115,7 +115,7 @@ class ApartmentApp:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("PAMS — Apartment Management")
+        self.root.title("PAMS - Apartment Management")
         self.root.geometry("1200x740")
         self.root.minsize(960, 600)
         self.root.configure(bg=BG_BASE)
@@ -430,7 +430,7 @@ class ApartmentApp:
             tree.insert("", "end", values=(
                 a.apartment_id, a.location, a.apt_type,
                 f"£{a.monthly_rent:,.2f}", a.num_rooms,
-                status, a.tenant_id if a.tenant_id else "—"
+                status, a.tenant_id if a.tenant_id else "-"
             ), tags=(a.status, row_tag))
 
         self._btn_row([
@@ -523,13 +523,14 @@ class ApartmentApp:
         self._ct_phone  = tk.StringVar()
         self._ct_ni     = tk.StringVar()
         self._ct_occ    = tk.StringVar()
-  
+        self._ct_ref    = tk.StringVar()
 
         self._form_row(form, "Full Name", lambda r: self._entry(r, self._ct_name, 40))
         self._form_row(form, "Email", lambda r: self._entry(r, self._ct_email, 40))
         self._form_row(form, "Phone", lambda r: self._entry(r, self._ct_phone, 40))
         self._form_row(form, "NI Number", lambda r: self._entry(r, self._ct_ni, 40))
         self._form_row(form, "Occupation", lambda r: self._entry(r, self._ct_occ, 40))
+        self._form_row(form, "Reference", lambda r: self._entry(r, self._ct_ref, 40))
 
 
 
@@ -545,8 +546,9 @@ class ApartmentApp:
             phone = self._ct_phone.get().strip()
             ni    = self._ct_ni.get().strip()
             occ   = self._ct_occ.get().strip()
+            ref   = self._ct_ref.get().strip()
 
-            self.manager.add_tenant(name, email, phone, ni, occ)
+            self.manager.add_tenant(name, email, phone, ni, occ, ref)
 
             messagebox.showinfo("Success", "Tenant created successfully!")
             self.show_assign_tenant()
@@ -592,11 +594,9 @@ class ApartmentApp:
         form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
-        # -----------------------------
-        # 1. Vacant apartments
-        # -----------------------------
+        # find vacant apartments
         vacant = [
-            f"{a.apartment_id}  —  {a.location}  ({a.apt_type})"
+            f"{a.apartment_id}  -  {a.location}  ({a.apt_type})"
             for a in self.manager.get_all_apartments()
             if a.status == "vacant"
         ]
@@ -610,12 +610,10 @@ class ApartmentApp:
         self._form_row(form, "Vacant Apartment",
             lambda r: self._combo(r, self._av_apt, vacant, 42))
 
-        # -----------------------------
-        # 2. Unassigned tenants
-        # -----------------------------
+        # getting unassigned tenants
         tenants = self.manager.get_all_tenants()
         tenant_opts = [
-            f"{t.tenant_id} — {t.full_name}"
+            f"{t.tenant_id} - {t.full_name}"
             for t in tenants
             if t.apartment_id is None
         ]
@@ -630,9 +628,8 @@ class ApartmentApp:
         self._form_row(form, "Tenant",
             lambda r: self._combo(r, self._av_tenant, tenant_opts, 42))
 
-        # -----------------------------
-        # 3. Lease dates
-        # -----------------------------
+        
+        # lease dates
         self._av_period = tk.StringVar()
         periods = ["1 month", "2 months", "3 months", "6 months", "12 months"]
 
@@ -655,12 +652,7 @@ class ApartmentApp:
                             bg=BG_CARD, fg=TEXT_MAIN, font=("Helvetica", 11)))
         
         
-
-
-
-        # -----------------------------
-        # 4. Assign button
-        # -----------------------------
+        # button
         btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Assign Tenant",
@@ -669,12 +661,12 @@ class ApartmentApp:
 
     def _submit_assign(self):
         try:
-            apt_id = int(self._av_apt.get().split("—")[0].strip())
+            apt_id = int(self._av_apt.get().split("-")[0].strip())
             apt = self.manager.get_apartment_by_id(apt_id)
 
             # tenant
             raw_tenant = self._av_tenant.get()
-            tenant_id = int(raw_tenant.split("—")[0].strip())
+            tenant_id = int(raw_tenant.split("-")[0].strip())
 
             # lease dates
             start = self._av_start.get().strip()
@@ -733,9 +725,9 @@ class ApartmentApp:
             tree.insert("", "end", values=(
                 r.request_id, r.apartment_id, r.description,
                 prio, r.status.upper(), r.date_raised,
-                r.date_resolved or "—",
-                f"£{r.cost:.2f}" if r.cost is not None else "—",
-                r.time_taken or "—"
+                r.date_resolved or "-",
+                f"£{r.cost:.2f}" if r.cost is not None else "-",
+                r.time_taken or "-"
             ), tags=(r.status, row_tag))
 
         self._btn_row([
@@ -759,7 +751,7 @@ class ApartmentApp:
         form.pack(fill="x")
 
         apts = self.manager.get_all_apartments()
-        opts = [f"{a.apartment_id}  —  {a.location}  ({a.apt_type})"
+        opts = [f"{a.apartment_id}  -  {a.location}  ({a.apt_type})"
                 for a in apts]
 
         if not opts:
@@ -788,7 +780,7 @@ class ApartmentApp:
     def _submit_maintenance(self):
         try:
             raw    = self._mv_apt.get()
-            apt_id = int(raw.split("—")[0].strip())
+            apt_id = int(raw.split("-")[0].strip())
             desc   = self._mv_desc.get().strip()
             prio   = self._mv_prio.get().strip()
             if not desc:
@@ -988,10 +980,10 @@ class ApartmentApp:
         self._activate("  Payments Overview")
         self._page_header("Payments & Billing", "All invoices and payment statuses")
 
-        #from payments import get_all_invoices  # your backend function
+        #from payments import get_all_invoices  
 
         invoices = self.finance.get_all_invoices()
-        paid = sum(1 for i in invoices if i["status"] == "paid")
+        paid = sum(1 for i in invoices if i["status"] == "paid" or i["status"] == "paid (late)")
         overdue = sum(1 for i in invoices if i["status"] == "overdue")
 
         self._stats_row([
@@ -1058,7 +1050,7 @@ class ApartmentApp:
         #from payments import get_active_tenants
 
         tenants = self.finance.get_active_tenants()
-        opts = [f"{t['tenant_id']} — {t['full_name']} (Apt {t['apartment_id']})" for t in tenants]
+        opts = [f"{t['tenant_id']} - {t['full_name']} (Apt {t['apartment_id']})" for t in tenants]
 
         self._inv_tenant = tk.StringVar(value="Select Tenant")
         self._inv_amount = tk.StringVar(value="£0.00")
@@ -1084,7 +1076,7 @@ class ApartmentApp:
         try:
             raw = self._inv_tenant.get()
             # extract tenant_id
-            tenant_id = int(raw.split("—")[0].strip())
+            tenant_id = int(raw.split("-")[0].strip())
 
             # extract apartment_id from "(Apt X)"
             apt_id = int(raw.split("Apt")[1].strip().replace(")", ""))
@@ -1103,6 +1095,8 @@ class ApartmentApp:
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
+    #record payment page
+
     def show_record_payment(self):
         self._clear()
         self._activate("  Record Payment")
@@ -1115,7 +1109,7 @@ class ApartmentApp:
         #from payments import get_unpaid_invoices
 
         invoices = self.finance.get_unpaid_invoices()
-        opts = [f"{i['invoice_id']} — {i['tenant_name']} (£{i['amount']})" for i in invoices]
+        opts = [f"{i['invoice_id']} - {i['tenant_name']} (£{i['amount']:.2f})" for i in invoices]
 
         self._pay_invoice = tk.StringVar(value=opts[0])
 
@@ -1128,21 +1122,28 @@ class ApartmentApp:
     def _submit_payment(self):
         #from payments import mark_payment_as_paid
 
-        invoice_id = int(self._pay_invoice.get().split("—")[0].strip())
+        invoice_id = int(self._pay_invoice.get().split("-")[0].strip())
         self.finance.mark_payment_as_paid(invoice_id)
 
+        payment_id = self.finance.get_payment_id_by_invoice(invoice_id)
+
         messagebox.showinfo("Success", "Payment recorded successfully!")
+        # show receipt popup
+        if payment_id:
+            self._show_receipt(payment_id)
+
         self.show_payments()
 
     def _show_receipt(self, payment_id):
         #from payments import generate_receipt
         data = self.finance.generate_receipt(payment_id)
+        paid_date = datetime.strptime(data['paid_date'], "%Y-%m-%d").strftime("%d-%m-%Y")
 
         p = self._popup("Payment Receipt", 420, 360)
         tk.Label(p, text=f"Tenant: {data['tenant']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Apartment: {data['apartment']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Amount Paid: £{data['amount']:.2f}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
-        tk.Label(p, text=f"Paid Date: {data['paid_date']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
+        tk.Label(p, text=f"Paid Date: {paid_date}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
 
 
 # ------------------------------------------------------------------ #

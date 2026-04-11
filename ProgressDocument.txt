@@ -1,0 +1,54 @@
+Anna:
+-has done apartment stuff
+    -creating apartments
+    -tenant assigned to track occupancy and maintenace requests, can remove a tenant from the apartment 
+-created a base for maintenace, cleanup needed
+-created a base for assign tenant, cleanup needed (done, Grace)
+-created mock data that can be used 
+
+Grace:
+-created create tenant page which fills in data and leaves certain blank (like location and apartment_id etc as they arent assigned yet); allows tenants to be created
+-tidied tenant assignment (having to chose a tenant that currently is in the system but in no apartment and appending data like location)
+-created payment overview, generate invoice and record payment pages 
+-payment overview: shows all invoices, marked with unpaid, paid, overdue and paid (late)
+-generate invoice: can chose a tenant in an occupied apartment and create invoice 
+-record payment: can chose an unpaid invoice and mark as paid. When mark as paid a receipt is shown with name, apartment info, amount paid and date paid
+
+Hamna:
+
+
+Tahiyah:
+
+
+Khadija:
+
+
+
+
+
+To do:
+Tenant management:
+-update info and remove tenant from system (edit tenant)
+-show lease agreements
+-payment history; if tenant leaves before contract/lease ends, they must give 1 months notice and 5% of months rent (rent*0.05=5% of rent)
+
+payment and Billing: (Grace)
+-late payments; generate notification if payment is late (no fee specified), could add button saying notify and show email and num
+
+Reporting: 
+-generate occupancy reports, filtered by apartment or city 
+-finacial summaries compare collected vs pending rents 
+-track maintenace costs for budget management
+
+maintenace:
+-prioritise issues, check worker availability, communicate dates & times with tenants, resolve issues, record resolution
+^^Anna has created a base for this to not start from scratch, just clean it up 
+-log time taken to fix each issue and costs
+
+
+
+
+
+
+
+

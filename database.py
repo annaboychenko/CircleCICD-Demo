@@ -87,7 +87,7 @@ def initialise_database():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tenants (
             tenant_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            location        TEXT    NOT NULL,
+            location        TEXT    DEFAULT NULL,
             full_name       TEXT    NOT NULL,
             email           TEXT    NOT NULL,
             phone           TEXT    NOT NULL,
