@@ -16,6 +16,7 @@ Grace:
 -payment overview: shows all invoices, marked with unpaid, paid, overdue and paid (late)
 -generate invoice: can chose a tenant in an occupied apartment and create invoice 
 -record payment: can chose an unpaid invoice and mark as paid. When mark as paid a receipt is shown with name, apartment info, amount paid and date paid
+-notification on screen if payment(s) are late
 
 Hamna:
 
@@ -31,12 +32,10 @@ Khadija:
 
 To do:
 Tenant management:
--update info and remove tenant from system (edit tenant)
+-update and remove info (maybe remove tenant from system) (edit tenant)
 -show lease agreements
 -payment history; if tenant leaves before contract/lease ends, they must give 1 months notice and 5% of months rent (rent*0.05=5% of rent)
-
-payment and Billing: (Grace)
--late payments; generate notification if payment is late (no fee specified), could add button saying notify and show email and num
+-also have a notification if their rent is late 
 
 Reporting: 
 -generate occupancy reports, filtered by apartment or city 
@@ -45,7 +44,7 @@ Reporting:
 
 maintenace:
 -prioritise issues, check worker availability, communicate dates & times with tenants, resolve issues, record resolution
-^^Anna has created a base for this to not start from scratch, just clean it up 
+^^Anna has created a base for this to not start from scratch, just clean it up (use it and expand on it) 
 -log time taken to fix each issue and costs
 
 

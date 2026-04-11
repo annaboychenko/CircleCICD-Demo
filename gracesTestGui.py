@@ -222,6 +222,7 @@ class ApartmentApp:
         self._nav_row(sb, "  Generate Invoice", self.show_invoice_form)
         self._nav_row(sb, "  Record Payment", self.show_record_payment)
 
+
         # spacer then credit
 
     def _section_lbl(self, parent, text):
@@ -350,6 +351,8 @@ class ApartmentApp:
         tree.tag_configure("vacant",   foreground=TEAL)
         tree.tag_configure("open",     foreground=AMBER)
         tree.tag_configure("resolved", foreground=TEAL)
+        tree.tag_configure("overdue", foreground=AMBER)
+
 
         tree.pack(fill="both", expand=True)
         return tree
@@ -985,6 +988,17 @@ class ApartmentApp:
         invoices = self.finance.get_all_invoices()
         paid = sum(1 for i in invoices if i["status"] == "paid" or i["status"] == "paid (late)")
         overdue = sum(1 for i in invoices if i["status"] == "overdue")
+
+        if overdue > 0:
+            tk.Label(self.main,
+                    text=f"⚠ {overdue} late payment(s) detected",
+                    font=("Helvetica", 12, "bold"),
+                    bg=BG_BASE, fg=AMBER).pack(padx=32, pady=(10, 0))
+        else:
+            tk.Label(self.main,
+                    text="No overdue payments",
+                    font=("Helvetica", 10),
+                    bg=BG_BASE, fg=TEXT_MUTED).pack(padx=32, pady=(10, 0))
 
         self._stats_row([
             (len(invoices), "Total Invoices", TEXT_MUTED),

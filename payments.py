@@ -42,6 +42,19 @@ class FinanceManager:
         conn.close()
 
 
+    # ---------------------------------------------------------
+    #  GET NOTIFICATION (for Record Payment page)
+    # ---------------------------------------------------------
+
+    def get_notifications(self):
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT message, created_at FROM notifications ORDER BY id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+
 
 
     # ---------------------------------------------------------
@@ -62,6 +75,20 @@ class FinanceManager:
                 substr(due_date, 1, 2)
             )< DATE('now')
         """)
+
+        cursor.execute("""
+            SELECT invoice_id, tenant_id, due_date
+            FROM invoices
+            WHERE status = 'overdue'
+        """)
+        overdue_rows = cursor.fetchall()
+
+        for inv_id, tenant_id, due_date in overdue_rows:
+            msg = f"Invoice {inv_id} for Tenant {tenant_id} is overdue (due {due_date})."
+            cursor.execute("""
+                INSERT INTO notifications (message, created_at)
+                VALUES (?, DATE('now'))
+            """, (msg,))
 
         conn.commit()
         conn.close()
