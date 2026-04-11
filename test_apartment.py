@@ -7,7 +7,7 @@
 import unittest
 import sqlite3
 import os
-from apartment import Apartment, MaintenanceRequest, ApartmentManager
+from apartmentAndTenant import Apartment, MaintenanceRequest, ApartmentManager
 
 # separate test db so real data is never touched during testing
 TEST_DB = "test_pams.db"
@@ -53,7 +53,7 @@ def setup_test_db():
 
 
 # swap get_connection in the apartment module to use the test db instead
-import apartment as apt_module
+import apartmentAndTenant as apt_module
 _original_get_connection = apt_module.get_connection
 
 
