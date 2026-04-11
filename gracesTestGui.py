@@ -36,28 +36,28 @@ if platform.system() == "Windows":
         pass
 
 
-BG_BASE      = "#111318"   # main background - almost black
-BG_SURFACE   = "#181b24"   # sidebar background
-BG_CARD      = "#1e2130"   # cards and table background
-BG_INPUT     = "#252a3a"   # entry field background
-BG_ROW_ODD   = "#222638"   # alternate row colour for the tables
+BG_BASE     ="#111318"   # main background - almost black
+BG_SURFACE  ="#181b24"   # sidebar background
+BG_CARD     ="#1e2130"   # cards and table background
+BG_INPUT    ="#252a3a"   # entry field background
+BG_ROW_ODD  ="#222638"   # alternate row colour for the tables
 
-TEAL         = "#ffffff"   # changed accent to white
-TEAL_DIM     = "#f2f2f2"   # changed hover to slightly different white
-TEAL_BG      = "#0d2622"   # teal tinted background for buttons
+TEAL        ="#ffffff"   # changed accent to white
+TEAL_DIM    ="#f2f2f2"   # changed hover to slightly different white
+TEAL_BG     ="#0d2622"   # teal tinted background for buttons
 
-AMBER        = "#f59e0b"   # used for warnings and open maintenance requests
-AMBER_BG     = "#2a1f06"
+AMBER       ="#f59e0b"   # used for warnings and open maintenance requests
+AMBER_BG    ="#2a1f06"
 
-RED          = "#f87171"   # used for occupied status and danger actions
-RED_BG       = "#2a1010"
+RED         ="#f87171"   # used for occupied status and danger actions
+RED_BG      ="#2a1010"
 
-TEXT_BRIGHT  = "#f1f5f9"   # headings
-TEXT_MAIN    = "#cbd5e1"   # normal text
-TEXT_MUTED   = "#64748b"   # labels and secondary text
-TEXT_DIVIDER = "#374151"   # dividers and section labels
+TEXT_BRIGHT ="#f1f5f9"   # headings
+TEXT_MAIN   ="#cbd5e1"   # normal text
+TEXT_MUTED  ="#64748b"   # labels and secondary text
+TEXT_DIVIDER="#374151"   # dividers and section labels
 
-BORDER       = "#2d3347"   # card and input borders
+BORDER      ="#2d3347"   # card and input borders
 
 
 class PillButton(tk.Frame):
@@ -71,9 +71,9 @@ class PillButton(tk.Frame):
                  bg=TEAL, fg=BG_BASE, hover_bg=TEAL_DIM,
                  padx=18, pady=7, font_size=10, **kw):
         super().__init__(parent, bg=bg, cursor="hand2", **kw)
-        self._bg       = bg
-        self._hover_bg = hover_bg
-        self._lbl = tk.Label(self, text=text,
+        self._bg      =bg
+        self._hover_bg=hover_bg
+        self._lbl=tk.Label(self, text=text,
                              font=("Helvetica", font_size,),
                              bg=bg, fg=fg, padx=padx, pady=pady,
                              cursor="hand2")
@@ -100,7 +100,7 @@ class StatCard(tk.Frame):
                          highlightbackground=BORDER, **kw)
         # the coloured top bar is what makes these look like proper stat cards
         tk.Frame(self, bg=accent, height=3).pack(fill="x")
-        inner = tk.Frame(self, bg=BG_CARD)
+        inner=tk.Frame(self, bg=BG_CARD)
         inner.pack(padx=24, pady=(12, 14))
         tk.Label(inner, text=str(value),
                  font=("Helvetica", 24, "bold"),
@@ -114,7 +114,7 @@ class ApartmentApp:
     """main application class - builds the whole gui"""
 
     def __init__(self, root):
-        self.root = root
+        self.root=root
         self.root.title("PAMS - Apartment Management")
         self.root.geometry("1200x740")
         self.root.minsize(960, 600)
@@ -124,11 +124,11 @@ class ApartmentApp:
 
         # create the manager and load mock data for the demo
         # the manager talks to the sqlite database through the methods in apartment.py
-        self.manager = ApartmentManager()
-        self.finance = FinanceManager ()
+        self.manager=ApartmentManager()
+        self.finance=FinanceManager ()
         self.manager.insert_mock_data()
 
-        self._nav_rows = {}   # stores references to nav buttons so we can highlight them
+        self._nav_rows={}   # stores references to nav buttons so we can highlight them
         self._build_sidebar()
         self._build_main_area()
         self.show_apartments()   # start on the apartments page
@@ -141,7 +141,7 @@ class ApartmentApp:
         # ttk widgets need custom styles to match the dark theme
         # the "clam" theme is the only one that actually lets you override colours properly
         # "default" and "alt" both ignore the background settings for some reason
-        s = ttk.Style()
+        s=ttk.Style()
         s.theme_use("clam")
 
         s.configure("Apt.Treeview",
@@ -185,18 +185,18 @@ class ApartmentApp:
     def _build_sidebar(self):
         # width=222 and pack_propagate(False) stops the sidebar from shrinking
         # to fit its contents - took me ages to figure out why it kept collapsing
-        sb = tk.Frame(self.root, bg=BG_SURFACE, width=300)
+        sb=tk.Frame(self.root, bg=BG_SURFACE, width=300)
         sb.pack(side="left", fill="y")
         sb.pack_propagate(False)
-        self._sb = sb
+        self._sb=sb
 
         # logo area at the top of the sidebar
-        logo = tk.Frame(sb, bg=BG_SURFACE)
+        logo=tk.Frame(sb, bg=BG_SURFACE)
         logo.pack(fill="x", padx=22, pady=(30, 20))
 
         # using place() here instead of pack because its the only way to properly
         # centre the letter inside the fixed-size frame
-        txt = tk.Frame(logo, bg=BG_SURFACE)
+        txt=tk.Frame(logo, bg=BG_SURFACE)
         txt.pack(side="left", padx=(10, 0))
         tk.Label(txt, text="PAMS", font=("Helvetica", 14),
                  bg=BG_SURFACE, fg=TEXT_BRIGHT).pack(anchor="w")
@@ -232,21 +232,21 @@ class ApartmentApp:
                  ).pack(anchor="w", padx=22, pady=(12, 4))
 
     def _nav_row(self, parent, label, command):
-        outer = tk.Frame(parent, bg=BG_SURFACE, cursor="hand2")
+        outer=tk.Frame(parent, bg=BG_SURFACE, cursor="hand2")
         outer.pack(fill="x", padx=8, pady=1)
 
         # the 3px indicator bar on the left - only visible when the row is active
-        ind = tk.Frame(outer, bg=BG_SURFACE, width=3)
+        ind=tk.Frame(outer, bg=BG_SURFACE, width=3)
         ind.pack(side="left", fill="y")
 
-        lbl = tk.Label(outer, text=label,
+        lbl=tk.Label(outer, text=label,
                        font=("Helvetica", 10), bg=BG_SURFACE,
                        fg=TEXT_MUTED, anchor="w", pady=11,
                        padx=10, cursor="hand2")
         lbl.pack(side="left", fill="x", expand=True)
 
         # store a reference so _activate() can find and update all nav rows
-        self._nav_rows[label] = (outer, ind, lbl)
+        self._nav_rows[label]=(outer, ind, lbl)
 
         def activate():
             self._activate(label)
@@ -288,7 +288,7 @@ class ApartmentApp:
     # ================================================================= #
 
     def _build_main_area(self):
-        self.main = tk.Frame(self.root, bg=BG_BASE)
+        self.main=tk.Frame(self.root, bg=BG_BASE)
         self.main.pack(side="right", fill="both", expand=True)
 
     def _clear(self):
@@ -305,12 +305,12 @@ class ApartmentApp:
         # teal left bar next to the title - gives it that dashboard look
         # i tried doing this with a border-left but tkinter doesnt support that
         # so a thin Frame widget is the workaround
-        wrap = tk.Frame(self.main, bg=BG_BASE)
+        wrap=tk.Frame(self.main, bg=BG_BASE)
         wrap.pack(fill="x", padx=32, pady=(28, 20))
 
         tk.Frame(wrap, bg=TEAL, width=4).pack(side="left", fill="y")
 
-        txt = tk.Frame(wrap, bg=BG_BASE)
+        txt=tk.Frame(wrap, bg=BG_BASE)
         txt.pack(side="left", padx=(14, 0))
         tk.Label(txt, text=title, font=("Helvetica", 20, "bold"),
                  bg=BG_BASE, fg=TEXT_BRIGHT).pack(anchor="w")
@@ -320,7 +320,7 @@ class ApartmentApp:
 
     def _stats_row(self, items):
         # renders a row of StatCard widgets at the top of a page
-        bar = tk.Frame(self.main, bg=BG_BASE)
+        bar=tk.Frame(self.main, bg=BG_BASE)
         bar.pack(fill="x", padx=32, pady=(0, 16))
         for val, lbl, color in items:
             StatCard(bar, val, lbl, color).pack(side="left", padx=(0, 10))
@@ -328,16 +328,16 @@ class ApartmentApp:
     def _table_frame(self, cols, widths, anchors=None):
         # builds a treeview table with a scrollbar and returns the tree widget
         # the wrap frame is needed so the scrollbar sits flush against the table
-        wrap = tk.Frame(self.main, bg=BG_BASE)
+        wrap=tk.Frame(self.main, bg=BG_BASE)
         wrap.pack(fill="both", expand=True, padx=32, pady=(0, 6))
 
-        sb = ttk.Scrollbar(wrap, style="Apt.Vertical.TScrollbar")
+        sb=ttk.Scrollbar(wrap, style="Apt.Vertical.TScrollbar")
         sb.pack(side="right", fill="y")
 
         if anchors is None:
-            anchors = ["center"] * len(cols)
+            anchors=["center"] * len(cols)
 
-        tree = ttk.Treeview(wrap, columns=cols, show="headings",
+        tree=ttk.Treeview(wrap, columns=cols, show="headings",
                             yscrollcommand=sb.set, style="Apt.Treeview",
                             selectmode="browse")
         for col, w, a in zip(cols, widths, anchors):
@@ -358,7 +358,7 @@ class ApartmentApp:
         return tree
 
     def _btn_row(self, buttons):
-        bar = tk.Frame(self.main, bg=BG_BASE)
+        bar=tk.Frame(self.main, bg=BG_BASE)
         bar.pack(fill="x", padx=32, pady=(8, 20))
         for text, cmd, bg, fg, hover in buttons:
             PillButton(bar, text, cmd,
@@ -366,18 +366,18 @@ class ApartmentApp:
                        ).pack(side="left", padx=(0, 8))
 
     def _form_card(self):
-        c = tk.Frame(self.main, bg=BG_CARD,
+        c=tk.Frame(self.main, bg=BG_CARD,
                      highlightthickness=1, highlightbackground=BORDER)
         c.pack(fill="x", padx=32, pady=8)
         return c
 
     def _form_row(self, parent, label, widget_fn, hint=""):
-        row = tk.Frame(parent, bg=BG_CARD)
+        row=tk.Frame(parent, bg=BG_CARD)
         row.pack(fill="x", pady=8)
         tk.Label(row, text=label, font=("Helvetica", 10),
                  bg=BG_CARD, fg=TEXT_MUTED, width=20, anchor="w"
                  ).pack(side="left")
-        w = widget_fn(row)
+        w=widget_fn(row)
         w.pack(side="left", padx=(10, 0), ipady=5)
         if hint:
             tk.Label(row, text=hint, font=("Helvetica", 8),
@@ -412,8 +412,8 @@ class ApartmentApp:
         self._page_header("Apartments",
                           "All registered properties across locations")
 
-        apts     = self.manager.get_all_apartments()
-        occupied = sum(1 for a in apts if a.status == "occupied")
+        apts    =self.manager.get_all_apartments()
+        occupied=sum(1 for a in apts if a.status == "occupied")
 
         # stat cards at the top - pulling live counts from the database
         self._stats_row([
@@ -422,14 +422,14 @@ class ApartmentApp:
             (len(apts)-occupied, "Vacant",   TEAL),
         ])
 
-        cols    = ("ID", "Location", "Type", "Rent (£)", "Rooms", "Status", "Tenant ID")
-        widths  = [52, 120, 200, 100, 70, 108, 90]
-        anchors = ["center","w","w","center","center","center","center"]
-        tree = self._table_frame(cols, widths, anchors)
+        cols   =("ID", "Location", "Type", "Rent (£)", "Rooms", "Status", "Tenant ID")
+        widths =[52, 120, 200, 100, 70, 108, 90]
+        anchors=["center","w","w","center","center","center","center"]
+        tree=self._table_frame(cols, widths, anchors)
 
         for i, a in enumerate(apts):
-            row_tag = "odd" if i % 2 else ""
-            status  = "● Occupied" if a.status == "occupied" else "● Vacant"
+            row_tag="odd" if i % 2 else ""
+            status ="● Occupied" if a.status == "occupied" else "● Vacant"
             tree.insert("", "end", values=(
                 a.apartment_id, a.location, a.apt_type,
                 f"£{a.monthly_rent:,.2f}", a.num_rooms,
@@ -458,18 +458,18 @@ class ApartmentApp:
         self._page_header("Register Apartment",
                           "Add a new property to the system")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
-        locs  = ["Bristol", "London", "Manchester", "Cardiff"]
-        types = ["Studio","1-bedroom flat","2-bedroom flat",
+        locs =["Bristol", "London", "Manchester", "Cardiff"]
+        types=["Studio","1-bedroom flat","2-bedroom flat",
                  "3-bedroom house","4-bedroom house"]
 
-        self._rv_loc   = tk.StringVar(value=locs[0])
-        self._rv_type  = tk.StringVar(value=types[1])
-        self._rv_rent  = tk.StringVar()
-        self._rv_rooms = tk.StringVar()
+        self._rv_loc  =tk.StringVar(value=locs[0])
+        self._rv_type =tk.StringVar(value=types[1])
+        self._rv_rent =tk.StringVar()
+        self._rv_rooms=tk.StringVar()
 
         self._form_row(form, "Location",
             lambda r: self._combo(r, self._rv_loc, locs, 34))
@@ -480,15 +480,15 @@ class ApartmentApp:
         self._form_row(form, "Number of Rooms",
             lambda r: self._entry(r, self._rv_rooms, 36))
 
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Register Apartment",
                    self._submit_register).pack(side="left")
 
     def _submit_register(self):
         try:
-            rent_s  = self._rv_rent.get().strip()
-            rooms_s = self._rv_rooms.get().strip()
+            rent_s =self._rv_rent.get().strip()
+            rooms_s=self._rv_rooms.get().strip()
             if not rent_s:
                 raise ValueError("monthly rent cannot be empty")
             if not rooms_s:
@@ -516,17 +516,17 @@ class ApartmentApp:
         self._activate("  Create Tenant")
         self._page_header("Create Tenant", "Add a new tenant to the system")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
         # form variables
-        self._ct_name   = tk.StringVar()
-        self._ct_email  = tk.StringVar()
-        self._ct_phone  = tk.StringVar()
-        self._ct_ni     = tk.StringVar()
-        self._ct_occ    = tk.StringVar()
-        self._ct_ref    = tk.StringVar()
+        self._ct_name  =tk.StringVar()
+        self._ct_email =tk.StringVar()
+        self._ct_phone =tk.StringVar()
+        self._ct_ni    =tk.StringVar()
+        self._ct_occ   =tk.StringVar()
+        self._ct_ref   =tk.StringVar()
 
         self._form_row(form, "Full Name", lambda r: self._entry(r, self._ct_name, 40))
         self._form_row(form, "Email", lambda r: self._entry(r, self._ct_email, 40))
@@ -537,19 +537,19 @@ class ApartmentApp:
 
 
 
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Create Tenant", 
                    self._submit_create_tenant).pack(side="left")
     
     def _submit_create_tenant(self):
         try:
-            name  = self._ct_name.get().strip()
-            email = self._ct_email.get().strip()
-            phone = self._ct_phone.get().strip()
-            ni    = self._ct_ni.get().strip()
-            occ   = self._ct_occ.get().strip()
-            ref   = self._ct_ref.get().strip()
+            name =self._ct_name.get().strip()
+            email=self._ct_email.get().strip()
+            phone=self._ct_phone.get().strip()
+            ni   =self._ct_ni.get().strip()
+            occ  =self._ct_occ.get().strip()
+            ref  =self._ct_ref.get().strip()
 
             self.manager.add_tenant(name, email, phone, ni, occ, ref)
 
@@ -567,19 +567,19 @@ class ApartmentApp:
 
     def _update_lease_end(self):
         try:
-            period = self._av_period.get()
-            start_str = self._av_start.get()
+            period=self._av_period.get()
+            start_str=self._av_start.get()
 
             if not period or not start_str:
                 return
 
             # parse inputs
-            months = int(period.split()[0])
-            start = datetime.strptime(start_str, "%d-%m-%Y")
+            months=int(period.split()[0])
+            start=datetime.strptime(start_str, "%d-%m-%Y")
 
             # calculate end date
-            end = start + relativedelta(months=months)
-            end_str = end.strftime("%d-%m-%Y")
+            end=start + relativedelta(months=months)
+            end_str=end.strftime("%d-%m-%Y")
 
             # update label
             self._av_end_display.set(end_str)
@@ -593,12 +593,12 @@ class ApartmentApp:
         self._page_header("Assign Tenant",
                           "Link a tenant to a vacant apartment")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
         # find vacant apartments
-        vacant = [
+        vacant=[
             f"{a.apartment_id}  -  {a.location}  ({a.apt_type})"
             for a in self.manager.get_all_apartments()
             if a.status == "vacant"
@@ -609,13 +609,13 @@ class ApartmentApp:
                     bg=BG_CARD, fg=RED, pady=20).pack()
             return
 
-        self._av_apt = tk.StringVar(value=vacant[0])
+        self._av_apt=tk.StringVar(value=vacant[0])
         self._form_row(form, "Vacant Apartment",
             lambda r: self._combo(r, self._av_apt, vacant, 42))
 
         # getting unassigned tenants
-        tenants = self.manager.get_all_tenants()
-        tenant_opts = [
+        tenants=self.manager.get_all_tenants()
+        tenant_opts=[
             f"{t.tenant_id} - {t.full_name}"
             for t in tenants
             if t.apartment_id is None
@@ -627,20 +627,20 @@ class ApartmentApp:
                     bg=BG_CARD, fg=RED, pady=20).pack()
             return
 
-        self._av_tenant = tk.StringVar(value="Select Tenant")
+        self._av_tenant=tk.StringVar(value="Select Tenant")
         self._form_row(form, "Tenant",
             lambda r: self._combo(r, self._av_tenant, tenant_opts, 42))
 
         
         # lease dates
-        self._av_period = tk.StringVar()
-        periods = ["1 month", "2 months", "3 months", "6 months", "12 months"]
+        self._av_period=tk.StringVar()
+        periods=["1 month", "2 months", "3 months", "6 months", "12 months"]
 
         self._form_row(form, "Lease Period",
             lambda r: self._combo(r, self._av_period, periods, 42))
 
-        self._av_start = tk.StringVar()
-        start_widget = self._form_row(form, "Lease Start",
+        self._av_start=tk.StringVar()
+        start_widget=self._form_row(form, "Lease Start",
             lambda r: DateEntry(r, textvariable=self._av_start, date_pattern="dd-mm-yyyy"))
 
         
@@ -649,14 +649,14 @@ class ApartmentApp:
 
 
         # Lease End (auto-calculated)
-        self._av_end_display = tk.StringVar(value="Select start date")
+        self._av_end_display=tk.StringVar(value="Select start date")
         self._form_row(form, "Lease End",
             lambda r: tk.Label(r, textvariable=self._av_end_display,
                             bg=BG_CARD, fg=TEXT_MAIN, font=("Helvetica", 11)))
         
         
         # button
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Assign Tenant",
                 self._submit_assign).pack(side="left")
@@ -664,21 +664,21 @@ class ApartmentApp:
 
     def _submit_assign(self):
         try:
-            apt_id = int(self._av_apt.get().split("-")[0].strip())
-            apt = self.manager.get_apartment_by_id(apt_id)
+            apt_id=int(self._av_apt.get().split("-")[0].strip())
+            apt=self.manager.get_apartment_by_id(apt_id)
 
             # tenant
-            raw_tenant = self._av_tenant.get()
-            tenant_id = int(raw_tenant.split("-")[0].strip())
+            raw_tenant=self._av_tenant.get()
+            tenant_id=int(raw_tenant.split("-")[0].strip())
 
             # lease dates
-            start = self._av_start.get().strip()
-            end_str = self._av_end_display.get()
-            period = self._av_period.get().strip()
+            start=self._av_start.get().strip()
+            end_str=self._av_end_display.get()
+            period=self._av_period.get().strip()
 
 
             # rent from apartment
-            rent = apt.monthly_rent
+            rent=apt.monthly_rent
 
             # update tenant
             self.manager.assign_tenant(
@@ -704,27 +704,27 @@ class ApartmentApp:
         self._page_header("Maintenance Requests",
                           "Track and resolve property issues")
 
-        reqs   = self.manager.get_all_maintenance_requests()
-        open_n = sum(1 for r in reqs if r.status == "open")
+        reqs  =self.manager.get_all_maintenance_requests()
+        open_n=sum(1 for r in reqs if r.status == "open")
         self._stats_row([
             (len(reqs),        "Total",    TEXT_MUTED),
             (open_n,           "Open",     AMBER),
             (len(reqs)-open_n, "Resolved", TEAL),
         ])
 
-        cols    = ("ID","Apt","Description","Priority",
+        cols   =("ID","Apt","Description","Priority",
                    "Status","Raised","Resolved","Cost (£)","Hrs")
-        widths  = [48,48,240,88,82,90,90,85,52]
-        anchors = ["center","center","w","center",
+        widths =[48,48,240,88,82,90,90,85,52]
+        anchors=["center","center","w","center",
                    "center","center","center","center","center"]
-        tree = self._table_frame(cols, widths, anchors)
+        tree=self._table_frame(cols, widths, anchors)
 
         # unicode icons make the priority column easier to read at a glance
-        prio_icons = {"High": "▲ HIGH", "Medium": "◆ MED", "Low": "▼ LOW"}
+        prio_icons={"High": "▲ HIGH", "Medium": "◆ MED", "Low": "▼ LOW"}
 
         for i, r in enumerate(reqs):
-            row_tag = "odd" if i % 2 else ""
-            prio    = prio_icons.get(r.priority, r.priority.upper())
+            row_tag="odd" if i % 2 else ""
+            prio   =prio_icons.get(r.priority, r.priority.upper())
             tree.insert("", "end", values=(
                 r.request_id, r.apartment_id, r.description,
                 prio, r.status.upper(), r.date_raised,
@@ -749,12 +749,12 @@ class ApartmentApp:
         self._page_header("New Maintenance Request",
                           "Report an issue with a property")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
-        apts = self.manager.get_all_apartments()
-        opts = [f"{a.apartment_id}  -  {a.location}  ({a.apt_type})"
+        apts=self.manager.get_all_apartments()
+        opts=[f"{a.apartment_id}  -  {a.location}  ({a.apt_type})"
                 for a in apts]
 
         if not opts:
@@ -763,9 +763,9 @@ class ApartmentApp:
                      bg=BG_CARD, fg=RED, pady=20).pack()
             return
 
-        self._mv_apt  = tk.StringVar(value=opts[0])
-        self._mv_prio = tk.StringVar(value="Medium")
-        self._mv_desc = tk.StringVar()
+        self._mv_apt =tk.StringVar(value=opts[0])
+        self._mv_prio=tk.StringVar(value="Medium")
+        self._mv_desc=tk.StringVar()
 
         self._form_row(form, "Apartment",
             lambda r: self._combo(r, self._mv_apt, opts, 44))
@@ -775,17 +775,17 @@ class ApartmentApp:
         self._form_row(form, "Description",
             lambda r: self._entry(r, self._mv_desc, 46))
 
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Submit Request",
                    self._submit_maintenance).pack(side="left")
 
     def _submit_maintenance(self):
         try:
-            raw    = self._mv_apt.get()
-            apt_id = int(raw.split("-")[0].strip())
-            desc   = self._mv_desc.get().strip()
-            prio   = self._mv_prio.get().strip()
+            raw   =self._mv_apt.get()
+            apt_id=int(raw.split("-")[0].strip())
+            desc  =self._mv_desc.get().strip()
+            prio  =self._mv_prio.get().strip()
             if not desc:
                 raise ValueError("description cannot be empty")
             self.manager.add_maintenance_request(apt_id, desc, prio)
@@ -802,7 +802,7 @@ class ApartmentApp:
         # toplevel creates a new window on top of the main one
         # grab_set() makes it modal so you have to close it before using the main window
         # the geometry calculation centres it over the parent window
-        p = tk.Toplevel(self.root)
+        p=tk.Toplevel(self.root)
         p.title(title)
         p.configure(bg=BG_SURFACE)
         p.resizable(False, False)
@@ -811,12 +811,12 @@ class ApartmentApp:
         # update_idletasks() forces tkinter to recalculate window sizes
         # without this winfo_x() and winfo_width() return 0
         self.root.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width()  - w) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - h) // 2
+        x=self.root.winfo_x() + (self.root.winfo_width()  - w) // 2
+        y=self.root.winfo_y() + (self.root.winfo_height() - h) // 2
         p.geometry(f"{w}x{h}+{x}+{y}")
 
         # same title bar style as the main pages
-        hdr = tk.Frame(p, bg=BG_SURFACE)
+        hdr=tk.Frame(p, bg=BG_SURFACE)
         hdr.pack(fill="x", padx=36, pady=(22, 0))
         tk.Frame(hdr, bg=TEAL, width=3).pack(side="left", fill="y")
         tk.Label(hdr, text=title, font=("Helvetica", 13, "bold"),
@@ -826,12 +826,12 @@ class ApartmentApp:
         return p
 
     def _resolve_popup(self, tree):
-        sel = tree.selection()
+        sel=tree.selection()
         if not sel:
             messagebox.showwarning("Nothing selected",
                                    "Select a request to resolve.")
             return
-        vals = tree.item(sel[0])["values"]
+        vals=tree.item(sel[0])["values"]
 
         # vals[4] is the Status column - check its not already resolved
         if "RESOLVED" in str(vals[4]):
@@ -839,18 +839,18 @@ class ApartmentApp:
                                 "This request is already resolved.")
             return
 
-        p    = self._popup(f"Resolve Request #{vals[0]}", 460, 500)
-        form = tk.Frame(p, bg=BG_SURFACE, padx=36)
+        p   =self._popup(f"Resolve Request #{vals[0]}", 460, 500)
+        form=tk.Frame(p, bg=BG_SURFACE, padx=36)
         form.pack(fill="x")
 
         tk.Label(p, text=f"Apt {vals[1]}  ·  {vals[2]}",
                  font=("Helvetica", 9), bg=BG_SURFACE, fg=TEXT_MUTED
                  ).pack(pady=(0, 14))
 
-        cost_v = tk.StringVar()
-        time_v = tk.StringVar()
+        cost_v=tk.StringVar()
+        time_v=tk.StringVar()
         for lbl, var in [("Cost (£)", cost_v), ("Time taken (hrs)", time_v)]:
-            row = tk.Frame(form, bg=BG_SURFACE)
+            row=tk.Frame(form, bg=BG_SURFACE)
             row.pack(fill="x", pady=6)
             tk.Label(row, text=lbl, font=("Helvetica", 10),
                      bg=BG_SURFACE, fg=TEXT_MUTED,
@@ -859,8 +859,8 @@ class ApartmentApp:
 
         def confirm():
             try:
-                c = cost_v.get().strip()
-                t = time_v.get().strip()
+                c=cost_v.get().strip()
+                t=time_v.get().strip()
                 if not c or not t:
                     raise ValueError("both fields are required")
                 self.manager.resolve_maintenance_request(
@@ -874,35 +874,35 @@ class ApartmentApp:
         PillButton(p, "Confirm Resolution", confirm).pack(pady=20)
 
     def _edit_popup(self, tree):
-        sel = tree.selection()
+        sel=tree.selection()
         if not sel:
             messagebox.showwarning("Nothing selected",
                                    "Select an apartment to edit.")
             return
-        vals   = tree.item(sel[0])["values"]
-        apt_id = vals[0]
+        vals  =tree.item(sel[0])["values"]
+        apt_id=vals[0]
 
-        p    = self._popup(f"Edit Apartment #{apt_id}", 460, 500)
-        form = tk.Frame(p, bg=BG_SURFACE, padx=36)
+        p   =self._popup(f"Edit Apartment #{apt_id}", 460, 500)
+        form=tk.Frame(p, bg=BG_SURFACE, padx=36)
         form.pack(fill="x", pady=8)
 
         # the rent value comes in formatted as "£1,200.00" from the table
         # so we need to strip the £ and commas before putting it back in an entry field
-        rent_str = str(vals[3]).replace("£","").replace(",","").strip()
-        v_loc    = tk.StringVar(value=vals[1])
-        v_type   = tk.StringVar(value=vals[2])
-        v_rent   = tk.StringVar(value=rent_str)
-        v_rooms  = tk.StringVar(value=str(vals[4]))
+        rent_str=str(vals[3]).replace("£","").replace(",","").strip()
+        v_loc   =tk.StringVar(value=vals[1])
+        v_type  =tk.StringVar(value=vals[2])
+        v_rent  =tk.StringVar(value=rent_str)
+        v_rooms =tk.StringVar(value=str(vals[4]))
 
-        locs  = ["Bristol","London","Manchester","Cardiff"]
-        types = ["Studio","1-bedroom flat","2-bedroom flat",
+        locs =["Bristol","London","Manchester","Cardiff"]
+        types=["Studio","1-bedroom flat","2-bedroom flat",
                  "3-bedroom house","4-bedroom house"]
 
         for lbl, var, opts in [
             ("Location",      v_loc,  locs),
             ("Property Type", v_type, types),
         ]:
-            row = tk.Frame(form, bg=BG_SURFACE)
+            row=tk.Frame(form, bg=BG_SURFACE)
             row.pack(fill="x", pady=6)
             tk.Label(row, text=lbl, font=("Helvetica", 10),
                      bg=BG_SURFACE, fg=TEXT_MUTED,
@@ -911,7 +911,7 @@ class ApartmentApp:
                 side="left", padx=(8,0), ipady=5)
 
         for lbl, var in [("Monthly Rent (£)", v_rent), ("Rooms", v_rooms)]:
-            row = tk.Frame(form, bg=BG_SURFACE)
+            row=tk.Frame(form, bg=BG_SURFACE)
             row.pack(fill="x", pady=6)
             tk.Label(row, text=lbl, font=("Helvetica", 10),
                      bg=BG_SURFACE, fg=TEXT_MUTED,
@@ -921,8 +921,8 @@ class ApartmentApp:
 
         def save():
             try:
-                r_s = v_rent.get().strip()
-                r_n = v_rooms.get().strip()
+                r_s=v_rent.get().strip()
+                r_n=v_rooms.get().strip()
                 if not r_s or not r_n:
                     raise ValueError("rent and rooms cannot be empty")
                 self.manager.update_apartment(
@@ -937,12 +937,12 @@ class ApartmentApp:
         PillButton(p, "Save Changes", save).pack(pady=20)
 
     def _delete_apartment(self, tree):
-        sel = tree.selection()
+        sel=tree.selection()
         if not sel:
             messagebox.showwarning("Nothing selected",
                                    "Select an apartment to delete.")
             return
-        apt_id = tree.item(sel[0])["values"][0]
+        apt_id=tree.item(sel[0])["values"][0]
         # confirm before deleting - the manager will also block it if there are open requests
         if messagebox.askyesno("Confirm Delete",
                 f"Delete apartment {apt_id}?\nThis cannot be undone."):
@@ -955,12 +955,12 @@ class ApartmentApp:
                 messagebox.showerror("Cannot Delete", str(e))
 
     def _remove_tenant(self, tree):
-        sel = tree.selection()
+        sel=tree.selection()
         if not sel:
             messagebox.showwarning("Nothing selected", "Select an apartment.")
             return
-        vals   = tree.item(sel[0])["values"]
-        apt_id = vals[0]
+        vals  =tree.item(sel[0])["values"]
+        apt_id=vals[0]
         # vals[5] is the Status column - check the dot symbol for vacant
         if "Vacant" in str(vals[5]):
             messagebox.showinfo("Already vacant",
@@ -985,9 +985,9 @@ class ApartmentApp:
 
         #from payments import get_all_invoices  
 
-        invoices = self.finance.get_all_invoices()
-        paid = sum(1 for i in invoices if i["status"] == "paid" or i["status"] == "paid (late)")
-        overdue = sum(1 for i in invoices if i["status"] == "overdue")
+        invoices=self.finance.get_all_invoices()
+        paid=sum(1 for i in invoices if i["status"] == "paid" or i["status"] == "paid (late)")
+        overdue=sum(1 for i in invoices if i["status"] == "overdue")
 
         if overdue > 0:
             tk.Label(self.main,
@@ -1006,12 +1006,12 @@ class ApartmentApp:
             (overdue, "Overdue", RED),
         ])
 
-        cols = ("ID", "Tenant", "Apt", "Amount", "Due", "Status")
-        widths = [60, 160, 80, 100, 120, 120]
-        tree = self._table_frame(cols, widths)
+        cols=("ID", "Tenant", "Apt", "Amount", "Due", "Status")
+        widths=[60, 160, 80, 100, 120, 120]
+        tree=self._table_frame(cols, widths)
 
         for i, inv in enumerate(invoices):
-            tag = "odd" if i % 2 else ""
+            tag="odd" if i % 2 else ""
             tree.insert("", "end", values=(
                 inv["invoice_id"],
                 inv["tenant_name"],
@@ -1023,10 +1023,10 @@ class ApartmentApp:
 
 
     def _date_entry(self, parent):
-        wrapper = tk.Frame(parent, bg=BG_CARD)
+        wrapper=tk.Frame(parent, bg=BG_CARD)
         wrapper.bind_all("<Button-1>", lambda e: None)
 
-        entry = DateEntry(
+        entry=DateEntry(
             wrapper,
             textvariable=self._inv_due,
             date_pattern="dd-mm-yyyy",
@@ -1039,14 +1039,14 @@ class ApartmentApp:
 
 
     def _update_invoice_amount(self, event=None):
-        raw = self._inv_tenant.get()
+        raw=self._inv_tenant.get()
 
         # extract apartment_id from "(Apt X)"
-        apt_id = int(raw.split("Apt")[1].strip().replace(")", ""))
+        apt_id=int(raw.split("Apt")[1].strip().replace(")", ""))
 
         # get rent from apartment
-        apt = self.manager.get_apartment_by_id(apt_id)
-        rent = apt.monthly_rent
+        apt=self.manager.get_apartment_by_id(apt_id)
+        rent=apt.monthly_rent
 
         # update the label
         self._inv_amount.set(f"£{rent:.2f}")
@@ -1057,20 +1057,20 @@ class ApartmentApp:
         self._activate("  Generate Invoice")
         self._page_header("Generate Invoice", "Create a new rent invoice")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
         #from payments import get_active_tenants
 
-        tenants = self.finance.get_active_tenants()
-        opts = [f"{t['tenant_id']} - {t['full_name']} (Apt {t['apartment_id']})" for t in tenants]
+        tenants=self.finance.get_active_tenants()
+        opts=[f"{t['tenant_id']} - {t['full_name']} (Apt {t['apartment_id']})" for t in tenants]
 
-        self._inv_tenant = tk.StringVar(value="Select Tenant")
-        self._inv_amount = tk.StringVar(value="£0.00")
-        self._inv_due = tk.StringVar()
+        self._inv_tenant=tk.StringVar(value="Select Tenant")
+        self._inv_amount=tk.StringVar(value="£0.00")
+        self._inv_due=tk.StringVar()
 
-        tenant_combo = self._form_row(form, "Tenant", lambda r: self._combo(r, self._inv_tenant, opts, 42))
+        tenant_combo=self._form_row(form, "Tenant", lambda r: self._combo(r, self._inv_tenant, opts, 42))
         tenant_combo.bind("<<ComboboxSelected>>", self._update_invoice_amount)
         self._form_row(form, "Amount (£)", lambda r: tk.Label(
             r, textvariable=self._inv_amount,
@@ -1079,7 +1079,7 @@ class ApartmentApp:
         self._form_row(form, "Due Date", self._date_entry)
 
 
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Create Invoice", self._submit_invoice).pack(side="left")
 
@@ -1088,19 +1088,19 @@ class ApartmentApp:
         #from payments import create_invoice, create_pending_payment
 
         try:
-            raw = self._inv_tenant.get()
+            raw=self._inv_tenant.get()
             # extract tenant_id
-            tenant_id = int(raw.split("-")[0].strip())
+            tenant_id=int(raw.split("-")[0].strip())
 
             # extract apartment_id from "(Apt X)"
-            apt_id = int(raw.split("Apt")[1].strip().replace(")", ""))
+            apt_id=int(raw.split("Apt")[1].strip().replace(")", ""))
 
           # get monthly rent from apartment manager
-            apt = self.manager.get_apartment_by_id(apt_id)
-            amount = apt.monthly_rent
-            due = self._inv_due.get()
+            apt=self.manager.get_apartment_by_id(apt_id)
+            amount=apt.monthly_rent
+            due=self._inv_due.get()
 
-            invoice_id = self.finance.create_invoice(tenant_id, apt_id, amount, due)
+            invoice_id=self.finance.create_invoice(tenant_id, apt_id, amount, due)
             self.finance.create_pending_payment(invoice_id, tenant_id, apt_id, amount, due)
 
             messagebox.showinfo("Success", "Invoice created successfully!")
@@ -1116,30 +1116,30 @@ class ApartmentApp:
         self._activate("  Record Payment")
         self._page_header("Record Payment", "Mark an invoice as paid")
 
-        card = self._form_card()
-        form = tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
+        card=self._form_card()
+        form=tk.Frame(card, bg=BG_CARD, padx=32, pady=24)
         form.pack(fill="x")
 
         #from payments import get_unpaid_invoices
 
-        invoices = self.finance.get_unpaid_invoices()
-        opts = [f"{i['invoice_id']} - {i['tenant_name']} (£{i['amount']:.2f})" for i in invoices]
+        invoices=self.finance.get_unpaid_invoices()
+        opts=[f"{i['invoice_id']} - {i['tenant_name']} (£{i['amount']:.2f})" for i in invoices]
 
-        self._pay_invoice = tk.StringVar(value=opts[0])
+        self._pay_invoice=tk.StringVar(value=opts[0])
 
         self._form_row(form, "Invoice", lambda r: self._combo(r, self._pay_invoice, opts, 42))
 
-        btn_row = tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
+        btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Mark as Paid", self._submit_payment).pack(side="left")
 
     def _submit_payment(self):
         #from payments import mark_payment_as_paid
 
-        invoice_id = int(self._pay_invoice.get().split("-")[0].strip())
+        invoice_id=int(self._pay_invoice.get().split("-")[0].strip())
         self.finance.mark_payment_as_paid(invoice_id)
 
-        payment_id = self.finance.get_payment_id_by_invoice(invoice_id)
+        payment_id=self.finance.get_payment_id_by_invoice(invoice_id)
 
         messagebox.showinfo("Success", "Payment recorded successfully!")
         # show receipt popup
@@ -1150,10 +1150,10 @@ class ApartmentApp:
 
     def _show_receipt(self, payment_id):
         #from payments import generate_receipt
-        data = self.finance.generate_receipt(payment_id)
-        paid_date = datetime.strptime(data['paid_date'], "%Y-%m-%d").strftime("%d-%m-%Y")
+        data=self.finance.generate_receipt(payment_id)
+        paid_date=datetime.strptime(data['paid_date'], "%Y-%m-%d").strftime("%d-%m-%Y")
 
-        p = self._popup("Payment Receipt", 420, 360)
+        p=self._popup("Payment Receipt", 420, 360)
         tk.Label(p, text=f"Tenant: {data['tenant']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Apartment: {data['apartment']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Amount Paid: £{data['amount']:.2f}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
@@ -1164,6 +1164,6 @@ class ApartmentApp:
 #  entry point                                                        #
 # ------------------------------------------------------------------ #
 if __name__ == "__main__":
-    root = tk.Tk()
-    app  = ApartmentApp(root)
+    root=tk.Tk()
+    app =ApartmentApp(root)
     root.mainloop()

@@ -11,15 +11,15 @@ class FinanceManager:
 # ---------------------------------------------------------
 
     def create_invoice(self, tenant_id, apartment_id, amount, due_date):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             INSERT INTO invoices (tenant_id, apartment_id, issue_date, due_date, amount)
             VALUES (?, ?, date('now'), ?, ?)
         """, (tenant_id, apartment_id, due_date, amount))
 
-        invoice_id = cursor.lastrowid
+        invoice_id=cursor.lastrowid
         conn.commit()
         conn.close()
         return invoice_id
@@ -30,8 +30,8 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def create_pending_payment(self, invoice_id, tenant_id, apartment_id, amount, due_date):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             INSERT INTO payments (tenant_id, apartment_id, invoice_id, amount, due_date, status)
@@ -47,10 +47,10 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def get_notifications(self):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
         cursor.execute("SELECT message, created_at FROM notifications ORDER BY id DESC")
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
         return rows
 
@@ -63,13 +63,13 @@ class FinanceManager:
 
 
     def update_overdue_invoices(self):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             UPDATE invoices
-            SET status = 'overdue'
-            WHERE status = 'unpaid'
+            SET status='overdue'
+            WHERE status='unpaid'
             AND DATE (substr(due_date, 7, 4) || '-' ||
                 substr(due_date, 4, 2) || '-' ||
                 substr(due_date, 1, 2)
@@ -79,12 +79,12 @@ class FinanceManager:
         cursor.execute("""
             SELECT invoice_id, tenant_id, due_date
             FROM invoices
-            WHERE status = 'overdue'
+            WHERE status='overdue'
         """)
-        overdue_rows = cursor.fetchall()
+        overdue_rows=cursor.fetchall()
 
         for inv_id, tenant_id, due_date in overdue_rows:
-            msg = f"Invoice {inv_id} for Tenant {tenant_id} is overdue (due {due_date})."
+            msg=f"Invoice {inv_id} for Tenant {tenant_id} is overdue (due {due_date})."
             cursor.execute("""
                 INSERT INTO notifications (message, created_at)
                 VALUES (?, DATE('now'))
@@ -99,21 +99,21 @@ class FinanceManager:
 
     def get_all_invoices(self):
         self.update_overdue_invoices()
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             SELECT i.invoice_id, i.amount, i.due_date, i.status,
                 t.full_name, t.tenant_id, i.apartment_id
             FROM invoices i
-            JOIN tenants t ON i.tenant_id = t.tenant_id
+            JOIN tenants t ON i.tenant_id=t.tenant_id
             ORDER BY i.invoice_id DESC
         """)
 
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
 
-        invoices = []
+        invoices=[]
         for r in rows:
             invoices.append({
                 "invoice_id": r[0],
@@ -133,22 +133,22 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def get_unpaid_invoices(self):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             SELECT i.invoice_id, i.amount, i.due_date, i.status,
                 t.full_name, t.tenant_id, i.apartment_id
             FROM invoices i
-            JOIN tenants t ON i.tenant_id = t.tenant_id
+            JOIN tenants t ON i.tenant_id=t.tenant_id
             WHERE i.status IN ('unpaid', 'overdue')
             ORDER BY i.due_date ASC
         """)
 
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
 
-        invoices = []
+        invoices=[]
         for r in rows:
             invoices.append({
                 "invoice_id": r[0],
@@ -174,8 +174,8 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def get_active_tenants(self):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             SELECT tenant_id, full_name, apartment_id
@@ -183,10 +183,10 @@ class FinanceManager:
             WHERE apartment_id IS NOT NULL
         """)
 
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
 
-        tenants = []
+        tenants=[]
         for r in rows:
             tenants.append({
                 "tenant_id": r[0],
@@ -202,46 +202,46 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def mark_payment_as_paid(self, invoice_id):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         # 1. Get the invoice due date
-        cursor.execute("SELECT due_date FROM invoices WHERE invoice_id = ?", (invoice_id,))
-        row = cursor.fetchone()
+        cursor.execute("SELECT due_date FROM invoices WHERE invoice_id=?", (invoice_id,))
+        row=cursor.fetchone()
 
         if not row:
             conn.close()
             raise ValueError("Invoice not found")
 
-        due_date_str = row[0]
+        due_date_str=row[0]
 
         # Convert dd-mm-yyyy → date object
         try:
-            due_date = datetime.strptime(due_date_str, "%d-%m-%Y").date()
+            due_date=datetime.strptime(due_date_str, "%d-%m-%Y").date()
         except:
             # If your DB stores yyyy-mm-dd, use this instead:
-            due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            due_date=datetime.strptime(due_date_str, "%Y-%m-%d").date()
 
-        today = date.today()
+        today=date.today()
 
         # 2. Decide status
         if today > due_date:
-            new_status = "paid (late)"
+            new_status="paid (late)"
         else:
-            new_status = "paid"
+            new_status="paid"
 
         # 3. Update payments table
         cursor.execute("""
             UPDATE payments
-            SET paid_date = date('now'), status = ?
-            WHERE invoice_id = ?
+            SET paid_date=date('now'), status=?
+            WHERE invoice_id=?
         """, (new_status, invoice_id))
 
         # 4. Update invoices table
         cursor.execute("""
             UPDATE invoices
-            SET status = ?
-            WHERE invoice_id = ?
+            SET status=?
+            WHERE invoice_id=?
         """, (new_status, invoice_id))
 
         conn.commit()
@@ -255,11 +255,11 @@ class FinanceManager:
 
 
     def get_payment_id_by_invoice(self, invoice_id):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
-        cursor.execute("SELECT payment_id FROM payments WHERE invoice_id = ?", (invoice_id,))
-        row = cursor.fetchone()
+        cursor.execute("SELECT payment_id FROM payments WHERE invoice_id=?", (invoice_id,))
+        row=cursor.fetchone()
 
         conn.close()
         return row[0] if row else None
@@ -272,26 +272,26 @@ class FinanceManager:
     # ---------------------------------------------------------
 
     def generate_receipt(self, invoice_id):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("""
             SELECT p.payment_id, p.amount, p.paid_date,
                 t.full_name, a.apartment_id, a.location, a.apt_type, i.invoice_id
             FROM payments p
-            JOIN tenants t ON p.tenant_id = t.tenant_id
-            JOIN apartments a ON p.apartment_id = a.apartment_id
-            JOIN invoices i ON p.invoice_id = i.invoice_id
-            WHERE p.invoice_id = ?
+            JOIN tenants t ON p.tenant_id=t.tenant_id
+            JOIN apartments a ON p.apartment_id=a.apartment_id
+            JOIN invoices i ON p.invoice_id=i.invoice_id
+            WHERE p.invoice_id=?
         """, (invoice_id,))
 
-        row = cursor.fetchone()
+        row=cursor.fetchone()
         conn.close()
 
         if not row:
             return None
 
-        apartment_str = f"{row[4]} - {row[5]} ({row[6]})"
+        apartment_str=f"{row[4]} - {row[5]} ({row[6]})"
         return {
             "payment_id": row[0],
             "amount": row[1],

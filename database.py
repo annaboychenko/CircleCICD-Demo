@@ -8,14 +8,14 @@ import sqlite3
 import os
 
 # path to the shared database file - all components use this same file
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pams.db")
+DB_PATH=os.path.join(os.path.dirname(os.path.abspath(__file__)), "pams.db")
 
 
 def get_connection():
     """returns a connection to the shared pams sqlite database"""
-    conn = sqlite3.connect(DB_PATH)
+    conn=sqlite3.connect(DB_PATH)
     # foreign keys are off by default in sqlite so we turn them on every connection
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
@@ -26,8 +26,8 @@ def initialise_database():
     other group members should add their own tables here too so everything
     stays in one place and we dont end up with multiple db files
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn=get_connection()
+    cursor=conn.cursor()
 
     # ------------------------------------------------------------------ #
     #  APARTMENTS TABLE - owned by anna (apartment management component)  #

@@ -31,23 +31,23 @@ class Apartment:
 
     def __init__(self, apartment_id, location, apt_type, monthly_rent,
                  num_rooms, status="vacant", tenant_id=None):
-        self.apartment_id = apartment_id
-        self.location     = location
-        self.apt_type     = apt_type         # e.g. 1-bedroom flat, studio, 3-bedroom house
-        self.monthly_rent = monthly_rent
-        self.num_rooms    = num_rooms
-        self.status       = status           # 'vacant' or 'occupied'
-        self.tenant_id    = tenant_id        # None if nobody lives there yet
+        self.apartment_id=apartment_id
+        self.location    =location
+        self.apt_type    =apt_type         # e.g. 1-bedroom flat, studio, 3-bedroom house
+        self.monthly_rent=monthly_rent
+        self.num_rooms   =num_rooms
+        self.status      =status           # 'vacant' or 'occupied'
+        self.tenant_id   =tenant_id        # None if nobody lives there yet
 
     def assign_tenant(self, tenant_id):
         """called when a tenant moves in - updates status and stores their id"""
-        self.tenant_id = tenant_id
-        self.status = "occupied"
+        self.tenant_id=tenant_id
+        self.status="occupied"
 
     def remove_tenant(self):
         """called when a tenant moves out - clears tenant and resets to vacant"""
-        self.tenant_id = None
-        self.status = "vacant"
+        self.tenant_id=None
+        self.status="vacant"
 
     def __str__(self):
         return (f"Apartment {self.apartment_id} — {self.location} "
@@ -67,22 +67,22 @@ class MaintenanceRequest:
     def __init__(self, request_id, apartment_id, description, priority,
                  status="open", date_raised=None, date_resolved=None,
                  cost=None, time_taken=None):
-        self.request_id   = request_id
-        self.apartment_id = apartment_id    # which apartment has the problem
-        self.description  = description     # what the actual issue is
-        self.priority     = priority        # 'low', 'medium', or 'high'
-        self.status       = status          # 'open' or 'resolved'
-        self.date_raised  = date_raised or str(date.today())
-        self.date_resolved = date_resolved  # filled in when fixed
-        self.cost         = cost            # repair cost in £
-        self.time_taken   = time_taken      # hours taken to fix it
+        self.request_id  =request_id
+        self.apartment_id=apartment_id    # which apartment has the problem
+        self.description =description     # what the actual issue is
+        self.priority    =priority        # 'low', 'medium', or 'high'
+        self.status      =status          # 'open' or 'resolved'
+        self.date_raised =date_raised or str(date.today())
+        self.date_resolved=date_resolved  # filled in when fixed
+        self.cost        =cost            # repair cost in £
+        self.time_taken  =time_taken      # hours taken to fix it
 
     def resolve(self, cost, time_taken):
         """maintenance staff call this when an issue is fixed"""
-        self.status       = "resolved"
-        self.cost         = cost
-        self.time_taken   = time_taken
-        self.date_resolved = str(date.today())
+        self.status      ="resolved"
+        self.cost        =cost
+        self.time_taken  =time_taken
+        self.date_resolved=str(date.today())
 
     def __str__(self):
         return (f"Request {self.request_id} — Apt {self.apartment_id} "
@@ -115,8 +115,8 @@ class ApartmentManager:
         if num_rooms <= 0:
             raise ValueError("number of rooms must be at least 1")
 
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             INSERT INTO apartments (location, apt_type, monthly_rent, num_rooms, status)
             VALUES (?, ?, ?, ?, 'vacant')
@@ -126,34 +126,34 @@ class ApartmentManager:
 
     def get_all_apartments(self):
         """returns every apartment as a list of Apartment objects"""
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("SELECT * FROM apartments ORDER BY apartment_id")
-        rows   = cursor.fetchall()
+        rows  =cursor.fetchall()
         conn.close()
         # *row unpacks the tuple so each column maps to the right __init__ param
         return [Apartment(*row) for row in rows]
 
     def get_apartments_by_location(self, location):
         """filter apartments by city - useful for admin and reporting components"""
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute(
-            "SELECT * FROM apartments WHERE location = ? ORDER BY apartment_id",
+            "SELECT * FROM apartments WHERE location=? ORDER BY apartment_id",
             (location,)
         )
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
         return [Apartment(*row) for row in rows]
 
     def get_apartment_by_id(self, apartment_id):
         """fetch a single apartment by id - returns None if not found"""
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute(
-            "SELECT * FROM apartments WHERE apartment_id = ?", (apartment_id,)
+            "SELECT * FROM apartments WHERE apartment_id=?", (apartment_id,)
         )
-        row = cursor.fetchone()
+        row=cursor.fetchone()
         conn.close()
         if row:
             return Apartment(*row)
@@ -167,12 +167,12 @@ class ApartmentManager:
         if num_rooms <= 0:
             raise ValueError("number of rooms must be at least 1")
 
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             UPDATE apartments
-            SET location = ?, apt_type = ?, monthly_rent = ?, num_rooms = ?
-            WHERE apartment_id = ?
+            SET location=?, apt_type=?, monthly_rent=?, num_rooms=?
+            WHERE apartment_id=?
         """, (location, apt_type, monthly_rent, num_rooms, apartment_id))
         conn.commit()
         conn.close()
@@ -182,20 +182,20 @@ class ApartmentManager:
         delete an apartment - blocked if there are open maintenance requests
         didnt want someone deleting a property that still has unresolved issues
         """
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
 
         # block deletion if any open requests exist for this apartment
         cursor.execute("""
             SELECT COUNT(*) FROM maintenance_requests
-            WHERE apartment_id = ? AND status = 'open'
+            WHERE apartment_id=? AND status='open'
         """, (apartment_id,))
         if cursor.fetchone()[0] > 0:
             conn.close()
             raise ValueError("cannot delete apartment with open maintenance requests")
 
         cursor.execute(
-            "DELETE FROM apartments WHERE apartment_id = ?", (apartment_id,)
+            "DELETE FROM apartments WHERE apartment_id=?", (apartment_id,)
         )
         conn.commit()
         conn.close()
@@ -207,8 +207,8 @@ class ApartmentManager:
 
 
     def add_tenant(self, name, email, phone, ni, occ, ref):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             INSERT INTO tenants (full_name, email, phone, ni_number, occupation, tenant_references)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -227,20 +227,20 @@ class ApartmentManager:
         the tenant management team should call this after creating a tenant record
         tenant_id must be a valid id from the tenants table
         """
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
 
-        apt = self.get_apartment_by_id(apartment_id)
-        location = apt.location
+        apt=self.get_apartment_by_id(apartment_id)
+        location=apt.location
         # 1. Check apartment exists and is vacant
-        cursor.execute("SELECT monthly_rent, status FROM apartments WHERE apartment_id = ?", (apartment_id,))
-        row = cursor.fetchone()
+        cursor.execute("SELECT monthly_rent, status FROM apartments WHERE apartment_id=?", (apartment_id,))
+        row=cursor.fetchone()
 
         if not row:
             conn.close()
             raise ValueError(f"Apartment {apartment_id} not found")
 
-        monthly_rent, status = row
+        monthly_rent, status=row
         if status == "occupied":
             conn.close()
             raise ValueError("Apartment is already occupied")
@@ -248,15 +248,15 @@ class ApartmentManager:
         # 2. Update tenant record
         cursor.execute("""
             UPDATE tenants
-            SET apartment_id = ?, location = ?, lease_period = ?, lease_start = ?, lease_end = ?, monthly_rent = ?
-            WHERE tenant_id = ?
+            SET apartment_id=?, location=?, lease_period=?, lease_start=?, lease_end=?, monthly_rent=?
+            WHERE tenant_id=?
         """, (apartment_id, location, lease_period, lease_start, lease_end, monthly_rent, tenant_id))
 
         # 3. Update apartment record
         cursor.execute("""
             UPDATE apartments
-            SET tenant_id = ?, status = 'occupied'
-            WHERE apartment_id = ?
+            SET tenant_id=?, status='occupied'
+            WHERE apartment_id=?
         """, (tenant_id, apartment_id))
         conn.commit()
         conn.close()
@@ -266,17 +266,17 @@ class ApartmentManager:
         unlink tenant from apartment and set status back to vacant
         tenant management team should call this when a tenant ends their lease
         """
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         # 1. Find which tenant is currently in this apartment
-        cursor.execute("SELECT tenant_id FROM apartments WHERE apartment_id = ?", (apartment_id,))
-        row = cursor.fetchone()
+        cursor.execute("SELECT tenant_id FROM apartments WHERE apartment_id=?", (apartment_id,))
+        row=cursor.fetchone()
 
         if not row:
             conn.close()
             raise ValueError("Apartment not found")
 
-        tenant_id = row[0]
+        tenant_id=row[0]
 
         # If no tenant, nothing to do
         if tenant_id is None:
@@ -286,51 +286,51 @@ class ApartmentManager:
         # 2. Clear tenant record (make them unassigned)
         cursor.execute("""
             UPDATE tenants
-            SET apartment_id = NULL,
-                lease_start = NULL,
-                lease_end = NULL,
-                monthly_rent = NULL
-            WHERE tenant_id = ?
+            SET apartment_id=NULL,
+                lease_start=NULL,
+                lease_end=NULL,
+                monthly_rent=NULL
+            WHERE tenant_id=?
         """, (tenant_id,))
 
         # 3. Clear apartment record
         cursor.execute("""
             UPDATE apartments
-            SET status = 'vacant', tenant_id = NULL
-            WHERE apartment_id = ?
+            SET status='vacant', tenant_id=NULL
+            WHERE apartment_id=?
         """, (apartment_id,))
         conn.commit()
         conn.close()
 
 
     def get_all_tenants(self):
-        conn = get_connection()
-        cursor = conn.cursor()
+        conn=get_connection()
+        cursor=conn.cursor()
         cursor.execute("SELECT * FROM tenants ORDER BY tenant_id")
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
 
         # tenants table columns:
         # tenant_id, full_name, email, phone, ni_number, occupation,
         # apartment_id, lease_start, lease_end, monthly_rent
 
-        tenants = []
+        tenants=[]
         for row in rows:
-            tenant = type("Tenant", (), {})()  # simple dynamic object
-            tenant.tenant_id        = row[0]
-            tenant.location         = row[1]
-            tenant.full_name        = row[2]
-            tenant.email            = row[3]
-            tenant.phone            = row[4]
-            tenant.ni_number        = row[5]
-            tenant.occupation       = row[6]
-            tenant.tenant_references = row[7]
-            tenant.apartment_id     = row[8]
-            tenant.lease_period     = row[9]
-            tenant.lease_start      = row[10]
-            tenant.lease_end        = row[11]
-            tenant.deposit_amount   = row[12]
-            tenant.monthly_rent     = row[13]
+            tenant=type("Tenant", (), {})()  # simple dynamic object
+            tenant.tenant_id       =row[0]
+            tenant.location        =row[1]
+            tenant.full_name       =row[2]
+            tenant.email           =row[3]
+            tenant.phone           =row[4]
+            tenant.ni_number       =row[5]
+            tenant.occupation      =row[6]
+            tenant.tenant_references=row[7]
+            tenant.apartment_id    =row[8]
+            tenant.lease_period    =row[9]
+            tenant.lease_start     =row[10]
+            tenant.lease_end       =row[11]
+            tenant.deposit_amount  =row[12]
+            tenant.monthly_rent    =row[13]
             tenants.append(tenant)
 
         return tenants
@@ -347,7 +347,7 @@ class ApartmentManager:
         maintenance staff will then pick them up from get_all_maintenance_requests()
         """
 
-        priority = priority.strip().capitalize()
+        priority=priority.strip().capitalize()
 
 
         if not description or not description.strip():
@@ -359,8 +359,8 @@ class ApartmentManager:
         if not self.get_apartment_by_id(apartment_id):
             raise ValueError(f"apartment {apartment_id} not found")
 
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             INSERT INTO maintenance_requests
                 (apartment_id, description, priority, status, date_raised)
@@ -371,8 +371,8 @@ class ApartmentManager:
 
     def get_all_maintenance_requests(self):
         """returns all maintenance requests ordered by priority then date"""
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         # order high priority first so maintenance staff see urgent ones at the top
         cursor.execute("""
             SELECT * FROM maintenance_requests
@@ -380,20 +380,20 @@ class ApartmentManager:
                 CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
                 date_raised ASC
         """)
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
         return [MaintenanceRequest(*row) for row in rows]
 
     def get_requests_by_apartment(self, apartment_id):
         """get all maintenance requests for a specific apartment"""
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             SELECT * FROM maintenance_requests
-            WHERE apartment_id = ?
+            WHERE apartment_id=?
             ORDER BY date_raised DESC
         """, (apartment_id,))
-        rows = cursor.fetchall()
+        rows=cursor.fetchall()
         conn.close()
         return [MaintenanceRequest(*row) for row in rows]
 
@@ -407,12 +407,12 @@ class ApartmentManager:
         if time_taken <= 0:
             raise ValueError("time taken must be greater than 0")
 
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
         cursor.execute("""
             UPDATE maintenance_requests
-            SET status = 'resolved', cost = ?, time_taken = ?, date_resolved = ?
-            WHERE request_id = ?
+            SET status='resolved', cost=?, time_taken=?, date_resolved=?
+            WHERE request_id=?
         """, (cost, time_taken, str(date.today()), request_id))
         conn.commit()
         conn.close()
@@ -426,11 +426,11 @@ class ApartmentManager:
         returns a dict with occupancy stats - used by the reporting component
         example return: {'total': 6, 'occupied': 4, 'vacant': 2, 'rate': 66.7}
         """
-        apartments = self.get_all_apartments()
-        total    = len(apartments)
-        occupied = sum(1 for a in apartments if a.status == "occupied")
-        vacant   = total - occupied
-        rate     = round((occupied / total * 100), 1) if total > 0 else 0.0
+        apartments=self.get_all_apartments()
+        total   =len(apartments)
+        occupied=sum(1 for a in apartments if a.status == "occupied")
+        vacant  =total - occupied
+        rate    =round((occupied / total * 100), 1) if total > 0 else 0.0
         return {
             "total":    total,
             "occupied": occupied,
@@ -443,9 +443,9 @@ class ApartmentManager:
         returns total maintenance costs - used by reporting/finance components
         only counts resolved requests since open ones dont have a cost yet
         """
-        requests = self.get_all_maintenance_requests()
-        resolved = [r for r in requests if r.status == "resolved" and r.cost]
-        total_cost = sum(r.cost for r in resolved)
+        requests=self.get_all_maintenance_requests()
+        resolved=[r for r in requests if r.status == "resolved" and r.cost]
+        total_cost=sum(r.cost for r in resolved)
         return {
             "total_requests": len(requests),
             "resolved":       len(resolved),
@@ -462,15 +462,15 @@ class ApartmentManager:
         adds realistic test data for demos and development
         only runs if the apartments table is empty so no duplicate data
         """
-        conn   = get_connection()
-        cursor = conn.cursor()
+        conn  =get_connection()
+        cursor=conn.cursor()
 
         cursor.execute("SELECT COUNT(*) FROM apartments")
         if cursor.fetchone()[0] > 0:
             conn.close()
             return  # already has data, dont add again
 
-        apartments = [
+        apartments=[
             ("Bristol",    "2-bedroom flat",   1200.00, 2),
             ("Bristol",    "1-bedroom flat",    850.00, 1),
             ("Bristol",    "Studio",            700.00, 1),
@@ -501,7 +501,7 @@ class ApartmentManager:
         )
 
         # some example maintenance requests at different stages
-        maintenance = [
+        maintenance=[
             (1, "boiler not working - no hot water",           "high"),
             (2, "leaking tap in bathroom",                     "low"),
             (4, "faulty electrical socket in kitchen",         "high"),
