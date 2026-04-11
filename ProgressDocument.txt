@@ -35,7 +35,7 @@ Tenant management:
 -update and remove info (maybe remove tenant from system) (edit tenant)
 -show lease agreements
 -payment history; if tenant leaves before contract/lease ends, they must give 1 months notice and 5% of months rent (rent*0.05=5% of rent)
--also have a notification if their rent is late 
+-also have a notification if their rent is late (them personally as a notification is already shown on payments page)
 
 Reporting: 
 -generate occupancy reports, filtered by apartment or city 
