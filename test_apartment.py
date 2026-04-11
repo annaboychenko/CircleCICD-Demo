@@ -354,6 +354,7 @@ class TestApartmentManager(unittest.TestCase):
     #  MAINTENANCE REQUESTS                                               #
     # ------------------------------------------------------------------ #
 
+
     def test_add_maintenance_request_saves_to_db(self):
         """maintenance request should appear in get_all_maintenance_requests"""
         manager = ApartmentManager()
