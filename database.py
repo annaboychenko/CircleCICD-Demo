@@ -141,6 +141,13 @@ def initialise_database():
         )
     """)
 
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message TEXT NOT NULL,
+                created_at TEXT NOT NULL
+        )
+""")
 
 
     conn.commit()

@@ -27,11 +27,11 @@ from payments import FinanceManager
 import platform
 
 from tenant_management import (
-    update_tenant,
+    edit_tenant,
     delete_tenant,
     calculate_early_termination_fee,
     get_lease_details,
-    check_late_payment
+    check_late_payment_tenant
 )
 
 # fixes the blurry font issue on windows - found this fix on stack overflow
@@ -218,8 +218,8 @@ class ApartmentApp:
         self._nav_row(sb, "  Apartments",   self.show_apartments)
         self._nav_row(sb, "  Register",      self.show_register_form)
         self._nav_row(sb, "  Create Tenant", self.show_create_tenant)
-
         self._nav_row(sb, "  Assign Tenant", self.show_assign_tenant)
+
         tk.Frame(sb, bg=BG_SURFACE, height=4).pack()
         self._section_lbl(sb, "MAINTENANCE")
         self._nav_row(sb, "  All Requests",  self.show_maintenance)
@@ -446,18 +446,27 @@ class ApartmentApp:
 
 
         self._btn_row([
-            ("👤 Manage Tenant",
-            lambda: self._tenant_popup(tree),
-            BG_CARD, TEXT_MAIN, "#272c3e"),
+
+            ("✏  Edit Apartment",
+             lambda: self._edit_popup(tree),
+             BG_CARD, TEXT_MAIN, "#272c3e"),
+            ("✕  Delete Apartment",
+             lambda: self._delete_apartment(tree),
+             RED_BG, RED, "#3a1818"),
+
 
             ("📄 View Lease",
             lambda: self._view_lease_popup(tree),
             BG_CARD, TEXT_MAIN, "#272c3e"),
-
+            ("👤 Manage Tenant",
+            lambda: self._tenant_popup(tree),
+            BG_CARD, TEXT_MAIN, "#272c3e"),
+            ("→  Remove Tenant from Apartment",
+             lambda: self._remove_tenant(tree),
+             AMBER_BG, AMBER, "#3a2a0a"),
             ("⚠ Check Late",
             lambda: self._check_late_popup(tree),
             AMBER_BG, AMBER, "#3a2a0a"),
-
             ("✕ Delete Tenant",
             lambda: self._delete_tenant_popup(tree),
             RED_BG, RED, "#3a1818"),
@@ -1018,7 +1027,7 @@ class ApartmentApp:
             tk.Entry(row, textvariable=var).pack(side="left")
 
         def save():
-            update_tenant(tenant_id, name.get(), email.get(), phone.get())
+            edit_tenant(tenant_id, name.get(), email.get(), phone.get())
             messagebox.showinfo("Success", "Tenant updated")
             p.destroy()
 
@@ -1074,7 +1083,7 @@ class ApartmentApp:
         if tenant_id == "-":
             return
 
-        if check_late_payment(tenant_id):
+        if check_late_payment_tenant(tenant_id):
             messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
         else:
             messagebox.showinfo("OK", "No late payments")

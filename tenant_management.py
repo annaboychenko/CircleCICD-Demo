@@ -8,7 +8,7 @@ from datetime import date, datetime
 # ---------------------------------------------------------
 # UPDATE TENANT
 # ---------------------------------------------------------
-def update_tenant(tenant_id, name=None, email=None, phone=None):
+def edit_tenant(tenant_id, name=None, email=None, phone=None):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -65,7 +65,7 @@ def calculate_early_termination_fee(tenant_id):
 # ---------------------------------------------------------
 # CHECK LATE PAYMENT (uses payments table)
 # ---------------------------------------------------------
-def check_late_payment(tenant_id):
+def check_late_payment_tenant(tenant_id):
     conn = get_connection()
     cursor = conn.cursor()
 
