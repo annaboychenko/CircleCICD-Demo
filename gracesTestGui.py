@@ -26,6 +26,14 @@ from apartmentAndTenant import ApartmentManager
 from payments import FinanceManager
 import platform
 
+from tenant_management import (
+    update_tenant,
+    delete_tenant,
+    calculate_early_termination_fee,
+    get_lease_details,
+    check_late_payment
+)
+
 # fixes the blurry font issue on windows - found this fix on stack overflow
 # it crashes silently on mac/linux so wrapping in try/except
 if platform.system() == "Windows":
@@ -436,17 +444,25 @@ class ApartmentApp:
                 status, a.tenant_id if a.tenant_id else "-"
             ), tags=(a.status, row_tag))
 
+
         self._btn_row([
-            ("✏  Edit",
-             lambda: self._edit_popup(tree),
-             BG_CARD, TEXT_MAIN, "#272c3e"),
-            ("→  Remove Tenant",
-             lambda: self._remove_tenant(tree),
-             AMBER_BG, AMBER, "#3a2a0a"),
-            ("✕  Delete",
-             lambda: self._delete_apartment(tree),
-             RED_BG, RED, "#3a1818"),
+            ("👤 Manage Tenant",
+            lambda: self._tenant_popup(tree),
+            BG_CARD, TEXT_MAIN, "#272c3e"),
+
+            ("📄 View Lease",
+            lambda: self._view_lease_popup(tree),
+            BG_CARD, TEXT_MAIN, "#272c3e"),
+
+            ("⚠ Check Late",
+            lambda: self._check_late_popup(tree),
+            AMBER_BG, AMBER, "#3a2a0a"),
+
+            ("✕ Delete Tenant",
+            lambda: self._delete_tenant_popup(tree),
+            RED_BG, RED, "#3a1818"),
         ])
+
 
     # ================================================================= #
     #  REGISTER PAGE                                                     #
@@ -971,6 +987,167 @@ class ApartmentApp:
             self.manager.remove_tenant(apt_id)
             messagebox.showinfo("Done", "Tenant removed. Apartment is now vacant.")
             self.show_apartments()
+
+    # ============================= #
+    # TENANT MANAGEMENT FEATURES
+    # ============================= #
+
+    def _tenant_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Select", "Select an apartment first")
+            return
+
+        vals = tree.item(sel[0])["values"]
+        tenant_id = vals[6]
+
+        if tenant_id == "-" or tenant_id is None:
+            messagebox.showinfo("No Tenant", "No tenant assigned")
+            return
+
+        p = self._popup(f"Edit Tenant #{tenant_id}", 400, 300)
+
+        name = tk.StringVar()
+        email = tk.StringVar()
+        phone = tk.StringVar()
+
+        for lbl, var in [("Name", name), ("Email", email), ("Phone", phone)]:
+            row = tk.Frame(p, bg=BG_SURFACE)
+            row.pack(pady=6)
+            tk.Label(row, text=lbl, bg=BG_SURFACE, fg=TEXT_MUTED, width=10).pack(side="left")
+            tk.Entry(row, textvariable=var).pack(side="left")
+
+        def save():
+            update_tenant(tenant_id, name.get(), email.get(), phone.get())
+            messagebox.showinfo("Success", "Tenant updated")
+            p.destroy()
+
+        PillButton(p, "Save", save).pack(pady=10)
+        PillButton(p, "Payment History",
+           lambda: self._payment_history_popup(tree)).pack(pady=5)
+
+
+    def _view_lease_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            return
+
+        tenant_id = tree.item(sel[0])["values"][6]
+
+        if tenant_id == "-":
+            messagebox.showinfo("No tenant", "No tenant assigned")
+            return
+
+        data = get_lease_details(tenant_id)
+
+        if not data:
+            messagebox.showinfo("No lease", "No lease found")
+            return
+
+        p = self._popup("Lease Details", 350, 300)
+
+        for k, v in data.items():
+            tk.Label(p, text=f"{k}: {v}",
+                     bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=3)
+        try:
+            fee = calculate_early_termination_fee(tenant_id)
+
+            tk.Label(p,
+                text=f"Termination Fee: £{fee:.2f}",
+                bg=BG_SURFACE, fg=AMBER).pack(pady=10)
+
+        except Exception:
+            tk.Label(p,
+                text="Could not calculate termination fee",
+                bg=BG_SURFACE, fg=RED).pack(pady=10)
+        
+        
+
+
+    def _check_late_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            return
+
+        tenant_id = tree.item(sel[0])["values"][6]
+
+        if tenant_id == "-":
+            return
+
+        if check_late_payment(tenant_id):
+            messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
+        else:
+            messagebox.showinfo("OK", "No late payments")
+
+
+    def _delete_tenant_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            return
+
+        tenant_id = tree.item(sel[0])["values"][6]
+
+        if tenant_id == "-":
+            return
+
+        if messagebox.askyesno("Confirm", "Delete this tenant completely?"):
+            delete_tenant(tenant_id)
+            messagebox.showinfo("Deleted", "Tenant removed from system")
+            self.show_apartments()
+
+
+# Payment history and early termination fee popups, which are accessible from the apartment page but pull data from the finance module
+    def _payment_history_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Select", "Select an apartment first")
+            return
+
+        tenant_id = tree.item(sel[0])["values"][6]
+
+        if tenant_id == "-" or tenant_id is None:
+            messagebox.showinfo("No Tenant", "No tenant assigned")
+            return
+
+        # get invoices for tenant
+        invoices = self.finance.get_all_invoices()
+
+        tenant_invoices = [i for i in invoices if i["tenant_id"] == tenant_id]
+
+        if not tenant_invoices:
+            messagebox.showinfo("No Data", "No payment history found")
+            return
+
+        p = self._popup(f"Payment History - Tenant {tenant_id}", 500, 400)
+
+        for inv in tenant_invoices:
+            text = f"Invoice {inv['invoice_id']} | £{inv['amount']:.2f} | {inv['status']} | Due: {inv['due_date']}"
+            tk.Label(p, text=text, bg=BG_SURFACE, fg=TEXT_MAIN).pack(anchor="w", padx=10, pady=3)
+
+
+    def _termination_fee_popup(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Select", "Select an apartment first")
+            return
+
+        tenant_id = tree.item(sel[0])["values"][6]
+
+        if tenant_id == "-" or tenant_id is None:
+            messagebox.showinfo("No Tenant", "No tenant assigned")
+            return
+
+        try:
+            fee = calculate_early_termination_fee(tenant_id)
+
+            messagebox.showinfo(
+                "Early Termination Fee",
+                f"Tenant must pay:\n\n£{fee:.2f}\n\n(1 month notice + 5%)"
+            )
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
 
 
     # ================================================================= #

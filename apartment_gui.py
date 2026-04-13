@@ -15,8 +15,11 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from apartment import ApartmentManager
+
+from sklearn import tree
+from apartmentAndTenant import ApartmentManager
 import platform
+from tenant_management import delete_tenant
 
 # fixes the blurry font issue on windows - found this fix on stack overflow
 # it crashes silently on mac/linux so wrapping in try/except
@@ -798,23 +801,47 @@ class ApartmentApp:
                 # this catches the "open maintenance requests" error from apartment.py
                 messagebox.showerror("Cannot Delete", str(e))
 
+
+    # REMOVE TENANT 
     def _remove_tenant(self, tree):
         sel = tree.selection()
         if not sel:
             messagebox.showwarning("Nothing selected", "Select an apartment.")
             return
-        vals   = tree.item(sel[0])["values"]
+
+        vals = tree.item(sel[0])["values"]
         apt_id = vals[0]
-        # vals[5] is the Status column - check the dot symbol for vacant
-        if "Vacant" in str(vals[5]):
-            messagebox.showinfo("Already vacant",
-                                "This apartment has no tenant.")
+        tenant_id = vals[6]  # Tenant ID column
+
+        # Check if already vacant
+        if tenant_id == "—":
+            messagebox.showinfo("Already vacant", "This apartment has no tenant.")
             return
+
+        # Confirm action
         if messagebox.askyesno("Confirm",
-                f"Remove tenant from apartment {apt_id}?"):
-            self.manager.remove_tenant(apt_id)
-            messagebox.showinfo("Done", "Tenant removed. Apartment is now vacant.")
+                f"Delete tenant {tenant_id} and remove from apartment {apt_id}?"):
+
+            delete_tenant(tenant_id)  # ✅ actually deletes from DB
+
+            messagebox.showinfo("Done", "Tenant deleted. Apartment is now vacant.")
             self.show_apartments()
+
+
+  # DELETE TENANT FUNCTION
+    def _delete_tenant(self, tree):
+        sel = tree.selection()
+        if not sel:
+            messagebox.showwarning("Nothing selected", "Select a tenant.")
+            return
+
+        tenant_id = tree.item(sel[0])["values"][0]
+
+        if messagebox.askyesno("Confirm", f"Delete tenant {tenant_id}?"):
+            delete_tenant(tenant_id)
+
+            messagebox.showinfo("Deleted", "Tenant removed.")
+            self.show_tenants()
 
 
 # ------------------------------------------------------------------ #
