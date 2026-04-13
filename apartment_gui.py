@@ -453,6 +453,9 @@ class ApartmentApp:
             ("✕  Delete Apartment",
              lambda: self._delete_apartment(tree),
              RED_BG, RED, "#3a1818"),
+             ("→  Remove Tenant from Apartment",
+             lambda: self._remove_tenant(tree),
+             AMBER_BG, AMBER, "#3a2a0a"),
 
 
             ("📄 View Lease",
@@ -461,9 +464,6 @@ class ApartmentApp:
             ("👤 Manage Tenant",
             lambda: self._tenant_popup(tree),
             BG_CARD, TEXT_MAIN, "#272c3e"),
-            ("→  Remove Tenant from Apartment",
-             lambda: self._remove_tenant(tree),
-             AMBER_BG, AMBER, "#3a2a0a"),
             ("⚠ Check Late",
             lambda: self._check_late_popup(tree),
             AMBER_BG, AMBER, "#3a2a0a"),

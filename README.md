@@ -1,4 +1,4 @@
-## gracesTestGui is how you run the system 
+## apartment_gui is how you run the system 
 
 The ProgressDocument explains what has been completed and what still needs to be done.
 

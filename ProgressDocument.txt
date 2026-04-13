@@ -22,6 +22,10 @@ Hamna:
 
 
 Tahiyah:
+-able to edit tenants info (manage tenant)
+-able to remove tenant from system (aprtment being vacant again needs to be fixed)
+-check if their rent is late (the button is there but not working)
+-able to view tenants lease (make layout neater; 'lease_start' becomes 'Start of lease', etc)
 
 
 Khadija:
