@@ -23,7 +23,7 @@ Hamna:
 
 Tahiyah:
 -able to edit tenants info (manage tenant)
--able to remove tenant from system (aprtment being vacant again needs to be fixed)
+-able to remove tenant from system (apartment being vacant again needs to be fixed)
 -check if their rent is late (the button is there but not working)
 -able to view tenants lease (make layout neater; 'lease_start' becomes 'Start of lease', etc)
 
@@ -36,9 +36,7 @@ Khadija:
 
 To do:
 Tenant management:
--update and remove info (maybe remove tenant from system) (edit tenant)
--show lease agreements
--payment history; if tenant leaves before contract/lease ends, they must give 1 months notice and 5% of months rent (rent*0.05=5% of rent)
+-payment history; if tenant leaves before contract/lease ends, they must give ****1 months notice**** and 5% of months rent (rent*0.05=5% of rent)
 -also have a notification if their rent is late (them personally as a notification is already shown on payments page)
 
 Reporting: 
