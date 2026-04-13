@@ -22,10 +22,12 @@ Hamna:
 
 
 Tahiyah:
--able to edit tenants info (manage tenant)
--able to remove tenant from system (apartment being vacant again needs to be fixed)
+-able to edit tenants info; manage tenant button
+-able to remove tenant from system 
 -check if their rent is late (the button is there but not working)
--able to view tenants lease (make layout neater; 'lease_start' becomes 'Start of lease', etc)
+-able to view tenants lease 
+-able to see payment history for each individual tenant 
+-have done termination fee and said one month notice
 
 
 Khadija:
@@ -36,8 +38,9 @@ Khadija:
 
 To do:
 Tenant management:
--payment history; if tenant leaves before contract/lease ends, they must give ****1 months notice**** and 5% of months rent (rent*0.05=5% of rent)
+-fix check late payment button
 -also have a notification if their rent is late (them personally as a notification is already shown on payments page)
+-Security/Verification; when adding a tenant all components must be filled (name, email, etc)
 
 Reporting: 
 -generate occupancy reports, filtered by apartment or city 
@@ -48,6 +51,8 @@ maintenace:
 -prioritise issues, check worker availability, communicate dates & times with tenants, resolve issues, record resolution
 ^^Anna has created a base for this to not start from scratch, just clean it up (use it and expand on it) 
 -log time taken to fix each issue and costs
+
+
 
 
 

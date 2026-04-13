@@ -115,8 +115,10 @@ class ApartmentManager:
         if num_rooms <= 0:
             raise ValueError("number of rooms must be at least 1")
 
+    
         conn  =get_connection()
         cursor=conn.cursor()
+
         cursor.execute("""
             INSERT INTO apartments (location, apt_type, monthly_rent, num_rooms, status)
             VALUES (?, ?, ?, ?, 'vacant')
@@ -227,6 +229,8 @@ class ApartmentManager:
         the tenant management team should call this after creating a tenant record
         tenant_id must be a valid id from the tenants table
         """
+
+       
         conn  =get_connection()
         cursor=conn.cursor()
 
@@ -244,7 +248,8 @@ class ApartmentManager:
         if status == "occupied":
             conn.close()
             raise ValueError("Apartment is already occupied")
-
+        
+        monthly_rent = round(monthly_rent, 2)
         # 2. Update tenant record
         cursor.execute("""
             UPDATE tenants

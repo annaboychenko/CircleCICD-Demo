@@ -1056,13 +1056,15 @@ class ApartmentApp:
         p = self._popup("Lease Details", 350, 300)
 
         for k, v in data.items():
+            if k == "Monthly Rent":
+                v = f"£{float(v):.2f}"
             tk.Label(p, text=f"{k}: {v}",
                      bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=3)
         try:
             fee = calculate_early_termination_fee(tenant_id)
 
             tk.Label(p,
-                text=f"Termination Fee: £{fee:.2f}",
+                text=f"Termination Fee: £{fee:.2f} + One months notice",
                 bg=BG_SURFACE, fg=AMBER).pack(pady=10)
 
         except Exception:
@@ -1072,7 +1074,7 @@ class ApartmentApp:
         
         
 
-
+#fix here 
     def _check_late_popup(self, tree):
         sel = tree.selection()
         if not sel:

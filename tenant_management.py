@@ -104,8 +104,8 @@ def get_lease_details(tenant_id):
         return None
 
     return {
-        "lease_start": row[0],
-        "lease_end": row[1],
-        "monthly_rent": row[2],
-        "apartment_id": row[3]
+        "Start of lease ": row[0],
+        "End of lease ": row[1],
+        "Monthly Rent": row[2],
+        "Apartment ID": row[3]
     }
