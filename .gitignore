@@ -2,3 +2,7 @@
 pams.db
 __pycache__/
 *.pyc
+
+
+
+test_apartment.py
