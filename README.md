@@ -17,14 +17,15 @@ or
 
 ### login details
 Use any of these:
+
 - Username: admin
 - Password: admin123
   
 - Username: finance
 - Password: finance123
-- 
+  
 - Username: staff
 - Password: staff123
-- 
+  
 - Username: manager
 - Password: manager123
