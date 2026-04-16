@@ -45,8 +45,6 @@ Khadija:
 -Integrated the reporting features with the existing system
 
 To do:
-Tenant management:
--also have a notification if their rent is late (them personally as a notification is already shown on payments page)
 
 Reporting: 
 -generate occupancy reports, filtered by apartment or city 
