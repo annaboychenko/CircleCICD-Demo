@@ -6,9 +6,9 @@ The ProgressDocument explains what has been completed and what still needs to be
 - pip install python-dateutil
 - pip install tkcalendar
 
-## To run login in page 
+# To run login in page 
 source .venv/bin/activate
-## then either 
-python login.py
-## or 
-python apartment_gui.py
+# then either 
+- python login.py 
+or
+- python apartment_gui.py
