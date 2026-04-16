@@ -464,7 +464,7 @@ class ApartmentApp:
             ("👤 Manage Tenant",
             lambda: self._tenant_popup(tree),
             BG_CARD, TEXT_MAIN, "#272c3e"),
-            ("⚠ Check Late",
+            ("⚠ Check Late & Notify",
             lambda: self._check_late_popup(tree),
             AMBER_BG, AMBER, "#3a2a0a"),
             ("✕ Delete Tenant",
@@ -575,6 +575,16 @@ class ApartmentApp:
             ni   =self._ct_ni.get().strip()
             occ  =self._ct_occ.get().strip()
             ref  =self._ct_ref.get().strip()
+
+            # security to check if all fields are filled
+            if not name or not email or not phone or not ni or not occ or not ref:
+                messagebox.showerror("Error", "All fields must be filled.")
+                return
+            
+            # email format validation
+            if "@" not in email or "." not in email.split("@")[-1]:
+                messagebox.showerror("Error", "Invalid email format.")
+                return
 
             self.manager.add_tenant(name, email, phone, ni, occ, ref)
 
@@ -1015,6 +1025,15 @@ class ApartmentApp:
             return
 
         p = self._popup(f"Edit Tenant #{tenant_id}", 400, 300)
+        # payment status label
+        status = "⚠ Overdue" if check_late_payment_tenant(tenant_id) else "✅ Up to date"
+
+        tk.Label(p,
+            text=f"Payment Status: {status}",
+            bg=BG_SURFACE,
+            fg=RED if "Overdue" in status else TEAL,
+            font=("Helvetica", 10, "bold")
+        ).pack(pady=5)
 
         name = tk.StringVar()
         email = tk.StringVar()
@@ -1027,6 +1046,9 @@ class ApartmentApp:
             tk.Entry(row, textvariable=var).pack(side="left")
 
         def save():
+            if not messagebox.askyesno("Confirm", "Save changes to tenant details?"):
+                return
+
             edit_tenant(tenant_id, name.get(), email.get(), phone.get())
             messagebox.showinfo("Success", "Tenant updated")
             p.destroy()
@@ -1087,6 +1109,9 @@ class ApartmentApp:
 
         if check_late_payment_tenant(tenant_id):
             messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
+
+            # simulate notification being sent to tenant
+            messagebox.showinfo("Notification Sent", "Tenant has been notified of late payment via email and SMS")
         else:
             messagebox.showinfo("OK", "No late payments")
 
