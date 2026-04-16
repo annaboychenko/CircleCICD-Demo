@@ -10,8 +10,18 @@ The ProgressDocument explains what has been completed and what still needs to be
 source .venv/bin/activate
 ### then either 
 - python login.py
-  
+    
 or
 
-
 - python apartment_gui.py
+
+### login details
+Use any of these:
+Username: admin
+Password: admin123
+Username: finance
+Password: finance123
+Username: staff
+Password: staff123
+Username: manager
+Password: manager123
