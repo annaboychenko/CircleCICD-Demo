@@ -31,10 +31,15 @@ Tahiyah:
 
 
 Khadija:
-
-
-
-
+-Developed the reporting module for the system
+-Created occupancy reports (by city and apartment)
+-Implemented financial summaries (billed, collected, pending, overdue rent)
+-Built maintenance cost reports for budget tracking
+-Created a demo script to display and test the reports
+-Added sample data to demonstrate financial reporting
+-Developed a login page for user authentication (username and password)
+-Connected the login system to the database (users table)
+-Integrated the reporting features with the existing system
 
 To do:
 Tenant management:
