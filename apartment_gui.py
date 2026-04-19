@@ -914,7 +914,7 @@ class ApartmentApp:
         self._clear()
         self._activate("  Notifications")
         self._page_header("Tenant Notifications",
-                          "Maintenance communications sent to tenants")
+                          "Communications sent to tenants")
 
         # fetch all saved notifications from the database
         notifs = self.maintenance.get_all_notifications()
@@ -943,7 +943,16 @@ class ApartmentApp:
                      bg=bg, fg=TEXT_MUTED).pack(side="right")
 
             # full notification message shown to staff to relay to tenant
-            msg = (f"Dear {n['tenant_name']},\n"
+
+            # Tahiyah - overdue rent notification integrated
+            if "overdue" in n['description'].lower():
+                msg = (f"Dear {n['tenant_name']},\n"
+                       f"This is a reminder that your rent payment is overdue.\n"
+                       f"Please make the payment as soon as possible to avoid any late fees or disruption of services.\n"
+                       f"If you have already made the payment, please disregard this message.\n"
+                       f"Contact us if you need assistance or to discuss payment options.")
+            else:
+                msg = (f"Dear {n['tenant_name']},\n"
                    f"We are writing to inform you that a maintenance visit has been scheduled "
                    f"regarding: {n['description']}.\n"
                    f"Date: {n['scheduled_date']}  |  Time: {n['scheduled_time']}  "
@@ -1239,18 +1248,40 @@ class ApartmentApp:
         if not sel:
             return
 
-        tenant_id = tree.item(sel[0])["values"][6]
+        vals = tree.item(sel[0])["values"]
+        tenant_id = vals[6]
+        apt_id = vals[0]
 
         if tenant_id == "-":
             return
 
         if check_late_payment_tenant(tenant_id):
+
+            # popup to alert staff of late payment and confirm tenant has been notified - in a real system this would trigger an email and SMS to the tenant automatically
             messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
-            messagebox.showinfo("Notification Sent", "Tenant has been notified of late payment via email and SMS")
+            
+            # get tenant name
+            tenants = self.manager.get_all_tenants()
+            tenant = next((t for t in tenants if t.tenant_id == tenant_id), None)
+            tenant_name = tenant.full_name if tenant else f"Tenant {tenant_id}"
+
+            self.maintenance.save_notification(
+                apartment_id=apt_id,
+                tenant_name=tenant_name,
+                worker_name="System",
+                scheduled_date="-",
+                scheduled_time="-",
+                description="Overdue rent Payment"
+            )
+
+            # confirmation
+            messagebox.showinfo(
+                "Notification Sent",
+                f"{tenant_name} has been notified of their overdue payment via email and SMS."
+            )
+        
         else:
             messagebox.showinfo("OK", "No late payments")
-
-
 
     def _delete_tenant_popup(self, tree):
         sel = tree.selection()
