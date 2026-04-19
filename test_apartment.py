@@ -290,7 +290,7 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(101, apt_id, "12 months", "01-01-2024", "01-01-2025")
+        manager.assign_tenant(apt_id, 101)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "occupied")
 
@@ -299,7 +299,7 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(101, apt_id, "12 months", "01-01-2024", "01-01-2025")
+        manager.assign_tenant(apt_id, 101)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.tenant_id, 101)
 
@@ -308,22 +308,22 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(101, apt_id, "12 months", "01-01-2024", "01-01-2025")
+        manager.assign_tenant(apt_id, 101)
         with self.assertRaises(ValueError):
-            manager.assign_tenant(202, apt_id, "12 months", "01-01-2024", "01-01-2025")
+            manager.assign_tenant(apt_id, 202)
 
     def test_assign_tenant_to_nonexistent_apartment_raises_error(self):
         """assigning a tenant to a missing apartment id should fail"""
         manager = ApartmentManager()
         with self.assertRaises(ValueError):
-            manager.assign_tenant(101, 9999, 12, "12 months", "01-01-2024", "01-01-2025")
+            manager.assign_tenant(9999, 101)
 
     def test_remove_tenant_resets_to_vacant_in_db(self):
         """removing a tenant should set status back to vacant in the db"""
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(101, apt_id, "12 months", "01-01-2024", "01-01-2025")
+        manager.assign_tenant(apt_id, 101)
         manager.remove_tenant(apt_id)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "vacant")
@@ -353,7 +353,6 @@ class TestApartmentManager(unittest.TestCase):
     # ------------------------------------------------------------------ #
     #  MAINTENANCE REQUESTS                                               #
     # ------------------------------------------------------------------ #
-
 
     def test_add_maintenance_request_saves_to_db(self):
         """maintenance request should appear in get_all_maintenance_requests"""
@@ -451,7 +450,7 @@ class TestApartmentManager(unittest.TestCase):
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         manager.add_apartment("London",  "Studio",          950.00, 1)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(101, apt_id, "12 months", "01-01-2024", "01-01-2025")
+        manager.assign_tenant(apt_id, 101)
         summary = manager.get_occupancy_summary()
         self.assertEqual(summary["total"],    2)
         self.assertEqual(summary["occupied"], 1)
