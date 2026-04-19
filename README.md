@@ -16,16 +16,10 @@ or
 - python apartment_gui.py
 
 ### login details
-Use any of these:
-
-- Username: admin
-- Password: admin123
-  
-- Username: finance
-- Password: finance123
-  
-- Username: staff
-- Password: staff123
-  
-- Username: manager
-- Password: manager123
+Use any of these to log in:
+ 
+- Username: admin       | Password: admin123
+- Username: manager     | Password: manager123
+- Username: frontdesk   | Password: frontdesk123
+- Username: finance     | Password: finance123
+- Username: maintenance | Password: maintenance123

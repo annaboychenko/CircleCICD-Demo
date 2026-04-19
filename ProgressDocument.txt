@@ -18,16 +18,17 @@ Grace:
 -record payment: can chose an unpaid invoice and mark as paid. When mark as paid a receipt is shown with name, apartment info, amount paid and date paid
 -notification on screen if payment(s) are late
 
-Hamna:
-
 
 Tahiyah:
--able to edit tenants info; manage tenant button
+-able to edit tenants info; manage tenant button + able to confirm change when editing.
 -able to remove tenant from system 
--check if their rent is late (the button is there but not working)
+-check if their rent is late
 -able to view tenants lease 
--able to see payment history for each individual tenant 
+-able to see payment history for each individual tenant - shows overdue payments
 -have done termination fee and said one month notice
+-Security - when adding a tenant all components must be filled
+-Basic email validation - must contain "@" and "."
+-Tenant recieves notification if rent is overdue (simulated notification)
 
 
 Khadija:
@@ -41,6 +42,23 @@ Khadija:
 -Connected the login system to the database (users table)
 -Integrated the reporting features with the existing system
 
+Hamna:
+- prioritised issues, high is always listed first, then medium, then low
+- check worker availability
+- communicate dates & times with tenants by sending notification to them in a new created notification page
+- fixed validation for tenants, tenants must enter all field for it to be accepted
+- added format validation for tenants, emails must have @ and . and ni number must be 9 numbers.
+- recorded resolution added when resolved selected and in table
+- log time taken to fix each issues and costs
+- added total repair costs to track maintenance costs for effective budgeting management
+- resolve issues, record resolution
+- login kept failing, added mock user data to database for login authentication
+- added workers name into database
+- date format changed to DD-MM-YYYY in maintenance table
+- merged tahiyahs changes from progress document, apartment.gui.py and tenant_management.py 
+- updated read me with new login details i added into database
+
+
 To do:
 Tenant management:
 -fix check late payment button
@@ -52,10 +70,6 @@ Reporting:
 -finacial summaries compare collected vs pending rents 
 -track maintenace costs for budget management
 
-maintenace:
--prioritise issues, check worker availability, communicate dates & times with tenants, resolve issues, record resolution
-^^Anna has created a base for this to not start from scratch, just clean it up (use it and expand on it) 
--log time taken to fix each issue and costs
 
 
 

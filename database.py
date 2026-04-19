@@ -59,6 +59,7 @@ def initialise_database():
             date_resolved  TEXT    DEFAULT NULL,
             cost           REAL    DEFAULT NULL,
             time_taken     INTEGER DEFAULT NULL,
+            resolution_notes TEXT DEFAULT NULL,
             FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
         )
     """)
@@ -108,7 +109,6 @@ def initialise_database():
     #  PAYMENTS TABLE - Grace                                            #
     #  they will expand this with invoice generation and late fees        #
     # ------------------------------------------------------------------ #
-   
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS invoices (
             invoice_id     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,13 +118,11 @@ def initialise_database():
             due_date       TEXT NOT NULL,
             amount         REAL NOT NULL,
             status         TEXT NOT NULL DEFAULT 'unpaid',
-  
             FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id),
             FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
         )
     """)
 
-  
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS payments (
             payment_id     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,23 +134,73 @@ def initialise_database():
             paid_date      TEXT    DEFAULT NULL,
             status         TEXT    NOT NULL DEFAULT 'pending',
             FOREIGN KEY (tenant_id)   REFERENCES tenants(tenant_id),
-            FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
+            FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id),
             FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
         )
     """)
 
     cursor.execute("""
-            CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                message TEXT NOT NULL,
-                created_at TEXT NOT NULL
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
-""")
+    """)
 
+    # ------------------------------------------------------------------ #
+    #  WORKERS TABLE - Hamna (maintenance component)                      #
+    #  stores maintenance workers across all locations                    #
+    # ------------------------------------------------------------------ #
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS workers (
+            worker_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            location  TEXT NOT NULL
+        )
+    """)
 
     conn.commit()
     conn.close()
 
 
+def insert_mock_users():
+    """inserts mock users and workers if tables are empty"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        users = [
+            ("admin",       "admin123",       "admin",       "Bristol", "Admin User",        "admin@pams.com"),
+            ("manager",     "manager123",     "manager",     "Bristol", "Manager User",      "manager@pams.com"),
+            ("frontdesk",   "frontdesk123",   "front_desk",  "Bristol", "Front Desk",        "frontdesk@pams.com"),
+            ("finance",     "finance123",     "finance",     "Bristol", "Finance Manager",   "finance@pams.com"),
+            ("maintenance", "maintenance123", "maintenance", "Bristol", "Maintenance Staff", "maintenance@pams.com"),
+        ]
+        cursor.executemany("""
+            INSERT INTO users (username, password, role, location, full_name, email)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, users)
+        conn.commit()
+
+    cursor.execute("SELECT COUNT(*) FROM workers")
+    if cursor.fetchone()[0] == 0:
+        workers = [
+            ("Jake Smith",    "Bristol"),
+            ("Michael Brown", "Bristol"),
+            ("Lily Evans",    "London"),
+            ("Mia Taylor",    "London"),
+            ("Charlie Davis", "Manchester"),
+            ("Sara Wilson",   "Cardiff"),
+        ]
+        cursor.executemany(
+            "INSERT INTO workers (full_name, location) VALUES (?, ?)", workers
+        )
+        conn.commit()
+
+    conn.close()
+
+
 # run schema setup when this module is imported for the first time
 initialise_database()
+insert_mock_users()

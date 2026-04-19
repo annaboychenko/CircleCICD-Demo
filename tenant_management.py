@@ -70,7 +70,7 @@ def check_late_payment_tenant(tenant_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT status FROM payments
+        SELECT status FROM invoices
         WHERE tenant_id=?
     """, (tenant_id,))
 
@@ -78,7 +78,9 @@ def check_late_payment_tenant(tenant_id):
     conn.close()
 
     for r in rows:
-        if "late" in r[0] or r[0] == "overdue":
+        status = r[0].lower() if r[0] else ""
+
+        if "overdue" in status or "late" in status:
             return True
 
     return False
