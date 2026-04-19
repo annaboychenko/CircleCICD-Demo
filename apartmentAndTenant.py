@@ -66,7 +66,7 @@ class MaintenanceRequest:
 
     def __init__(self, request_id, apartment_id, description, priority,
                  status="open", date_raised=None, date_resolved=None,
-                 cost=None, time_taken=None):
+                 cost=None, time_taken=None, resolution_notes=None):
         self.request_id  =request_id
         self.apartment_id=apartment_id    # which apartment has the problem
         self.description =description     # what the actual issue is
@@ -76,6 +76,7 @@ class MaintenanceRequest:
         self.date_resolved=date_resolved  # filled in when fixed
         self.cost        =cost            # repair cost in £
         self.time_taken  =time_taken      # hours taken to fix it
+        self.resolution_notes = resolution_notes
 
     def resolve(self, cost, time_taken):
         """maintenance staff call this when an issue is fixed"""
@@ -402,7 +403,7 @@ class ApartmentManager:
         conn.close()
         return [MaintenanceRequest(*row) for row in rows]
 
-    def resolve_maintenance_request(self, request_id, cost, time_taken):
+    def resolve_maintenance_request(self, request_id, cost, time_taken, notes=""):
         """
         mark a maintenance request as resolved
         maintenance staff call this after finishing a job and logging their time/costs
@@ -416,9 +417,9 @@ class ApartmentManager:
         cursor=conn.cursor()
         cursor.execute("""
             UPDATE maintenance_requests
-            SET status='resolved', cost=?, time_taken=?, date_resolved=?
+            SET status='resolved', cost=?, time_taken=?, date_resolved=?, resolution_notes=?
             WHERE request_id=?
-        """, (cost, time_taken, str(date.today()), request_id))
+        """, (cost, time_taken, str(date.today()), notes, request_id))
         conn.commit()
         conn.close()
 

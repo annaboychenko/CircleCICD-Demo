@@ -21,10 +21,13 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import re
 
 from apartmentAndTenant import ApartmentManager
 from payments import FinanceManager
+from maintenance import MaintenanceManager
 import platform
+
 
 from tenant_management import (
     edit_tenant,
@@ -134,7 +137,9 @@ class ApartmentApp:
         # the manager talks to the sqlite database through the methods in apartment.py
         self.manager=ApartmentManager()
         self.finance=FinanceManager ()
+        self.maintenance = MaintenanceManager()
         self.manager.insert_mock_data()
+        
 
         self._nav_rows={}   # stores references to nav buttons so we can highlight them
         self._build_sidebar()
@@ -224,6 +229,7 @@ class ApartmentApp:
         self._section_lbl(sb, "MAINTENANCE")
         self._nav_row(sb, "  All Requests",  self.show_maintenance)
         self._nav_row(sb, "  New Request",   self.show_maintenance_form)
+        self._nav_row(sb, "  Notifications", self.show_notifications)
 
         self._section_lbl(sb, "PAYMENTS")
         self._nav_row(sb, "  Payments Overview", self.show_payments)
@@ -576,15 +582,25 @@ class ApartmentApp:
             occ  =self._ct_occ.get().strip()
             ref  =self._ct_ref.get().strip()
 
-            # security to check if all fields are filled
-            if not name or not email or not phone or not ni or not occ or not ref:
-                messagebox.showerror("Error", "All fields must be filled.")
-                return
+            if not name:
+                raise ValueError("Full name is required.")
+            if not email:
+                raise ValueError("Email is required.")
+            if not phone:
+                raise ValueError("Phone number is required.")
+            if not ni:
+                raise ValueError("NI number is required.")
+            if not occ:
+                raise ValueError("Occupation is required.")
+            if not ref:
+                raise ValueError("Reference is required.")
             
-            # email format validation
-            if "@" not in email or "." not in email.split("@")[-1]:
-                messagebox.showerror("Error", "Invalid email format.")
-                return
+            if "@" not in email or "." not in email:
+                raise ValueError("Please enter a valid email address.")
+            if not phone.replace(" ", "").isdigit() or len(phone.replace(" ", "")) < 10:
+               raise ValueError("Please enter a valid phone number (digits only, min 10 digits).")
+            if len(ni.replace(" ", "")) != 9:
+               raise ValueError("NI number must be 9 characters e.g. AB123456C.")
 
             self.manager.add_tenant(name, email, phone, ni, occ, ref)
 
@@ -676,7 +692,7 @@ class ApartmentApp:
 
         self._av_start=tk.StringVar()
         start_widget=self._form_row(form, "Lease Start",
-            lambda r: DateEntry(r, textvariable=self._av_start, date_pattern="dd-mm-yyyy"))
+            lambda r: DateEntry(r, textvariable=self._mv_date, date_pattern="dd-mm-yyyy"))
 
         
         self._av_period.trace_add("write", lambda *args: self._update_lease_end())
@@ -732,7 +748,6 @@ class ApartmentApp:
     # ================================================================= #
     #  MAINTENANCE REQUESTS PAGE                                         #
     # ================================================================= #
-
     def show_maintenance(self):
         self._clear()
         self._activate("  All Requests")
@@ -740,32 +755,46 @@ class ApartmentApp:
                           "Track and resolve property issues")
 
         reqs  =self.manager.get_all_maintenance_requests()
+
+        # sort by priority so high priority issues always appear first
+        priority_order = {"high": 1, "medium": 2, "low": 3}
+        reqs.sort(key=lambda r: priority_order.get(r.priority.lower().strip(), 4))
+
         open_n=sum(1 for r in reqs if r.status == "open")
+
+        # total cost of all resolved requests for budget tracking
+        total_cost=sum(r.cost for r in reqs if r.cost is not None)
+
         self._stats_row([
             (len(reqs),        "Total",    TEXT_MUTED),
             (open_n,           "Open",     AMBER),
             (len(reqs)-open_n, "Resolved", TEAL),
+            (f"£{total_cost:,.2f}", "Total Repair Cost", AMBER),
         ])
 
         cols   =("ID","Apt","Description","Priority",
-                   "Status","Raised","Resolved","Cost (£)","Hrs")
-        widths =[48,48,240,88,82,90,90,85,52]
+                   "Status","Raised","Resolved","Cost (£)","Hrs","Resolution Notes")
+        widths =[48,48,180,88,82,90,90,85,52,200]
         anchors=["center","center","w","center",
-                   "center","center","center","center","center"]
+                   "center","center","center","center","center","w"]
         tree=self._table_frame(cols, widths, anchors)
 
         # unicode icons make the priority column easier to read at a glance
         prio_icons={"High": "▲ HIGH", "Medium": "◆ MED", "Low": "▼ LOW"}
+
+        # convert date format from yyyy-mm-dd to dd-mm-yyyy for display
+        fmt = lambda d: datetime.strptime(d, "%Y-%m-%d").strftime("%d-%m-%Y") if d else "-"
 
         for i, r in enumerate(reqs):
             row_tag="odd" if i % 2 else ""
             prio   =prio_icons.get(r.priority, r.priority.upper())
             tree.insert("", "end", values=(
                 r.request_id, r.apartment_id, r.description,
-                prio, r.status.upper(), r.date_raised,
-                r.date_resolved or "-",
+                prio, r.status.upper(), fmt (r.date_raised),
+                fmt(r.date_resolved) if r.date_resolved else "-",
                 f"£{r.cost:.2f}" if r.cost is not None else "-",
-                r.time_taken or "-"
+                r.time_taken or "-",
+                r.resolution_notes or "-"
             ), tags=(r.status, row_tag))
 
         self._btn_row([
@@ -773,11 +802,10 @@ class ApartmentApp:
              lambda: self._resolve_popup(tree),
              TEAL_BG, TEAL, "#0f2e2a"),
         ])
-
+    
     # ================================================================= #
     #  NEW MAINTENANCE REQUEST PAGE                                      #
     # ================================================================= #
-
     def show_maintenance_form(self):
         self._clear()
         self._activate("  New Request")
@@ -802,6 +830,11 @@ class ApartmentApp:
         self._mv_prio=tk.StringVar(value="Medium")
         self._mv_desc=tk.StringVar()
 
+        # variables for worker scheduling fields added by hamna
+        self._mv_worker=tk.StringVar()
+        self._mv_date=tk.StringVar()
+        self._mv_time=tk.StringVar()
+
         self._form_row(form, "Apartment",
             lambda r: self._combo(r, self._mv_apt, opts, 44))
         self._form_row(form, "Priority",
@@ -810,6 +843,17 @@ class ApartmentApp:
         self._form_row(form, "Description",
             lambda r: self._entry(r, self._mv_desc, 46))
 
+        # fetch workers from database so dropdown is always up to date
+        workers = self.maintenance.get_all_workers()
+        worker_names = [w["full_name"] for w in workers]
+        self._form_row(form,"Worker",
+             lambda r: self._combo(r, self._mv_worker, worker_names, 30))
+        self._form_row(form, "Date",
+             lambda r: DateEntry(r, textvariable=self._mv_date, date_pattern="dd-mm-yyyy"))
+        # time must be entered in hh:mm format - validated in _submit_maintenance
+        self._form_row(form, "Time",
+             lambda r: self._entry(r, self._mv_time, 20))
+
         btn_row=tk.Frame(card, bg=BG_CARD, padx=32, pady=16)
         btn_row.pack(fill="x")
         PillButton(btn_row, "Submit Request",
@@ -817,17 +861,109 @@ class ApartmentApp:
 
     def _submit_maintenance(self):
         try:
-            raw   =self._mv_apt.get()
-            apt_id=int(raw.split("-")[0].strip())
-            desc  =self._mv_desc.get().strip()
-            prio  =self._mv_prio.get().strip()
+            raw = self._mv_apt.get()
+            apt_id = int(raw.split("  -  ")[0].strip())
+            desc  = self._mv_desc.get().strip()
+            prio  = self._mv_prio.get().strip()
+
+            worker = self._mv_worker.get().strip()
+            date   = self._mv_date.get().strip()
+            time   = self._mv_time.get().strip()
+
+            # validate all required fields are filled
             if not desc:
                 raise ValueError("description cannot be empty")
+            if not worker:
+                raise ValueError("Please select a worker")
+            if not time:
+                raise ValueError("Please enter a time")
+
+            # validate time is in hh:mm format
+            if not re.match(r"^\d{2}:\d{2}$", time):
+                raise ValueError("Time must be in HH:MM format e.g. 09:00")
+
+            # check worker is not already booked at this date and time
+            if not self.maintenance.is_worker_available(worker, date, time):
+                raise ValueError("Worker is not available at this date and time.")
+
             self.manager.add_maintenance_request(apt_id, desc, prio)
+
+            # look up tenant name for the notification message
+            apt = self.manager.get_apartment_by_id(apt_id)
+            tenant_name = "Unassigned"
+            if apt.tenant_id:
+                 tenants = self.manager.get_all_tenants()
+                 tenant = next((t for t in tenants if t.tenant_id == apt.tenant_id), None)
+                 if tenant:
+                      tenant_name = tenant.full_name
+                      # save worker booking and log the tenant notification
+                      self.maintenance.assign_worker(worker, date, time, apt_id)
+                      self.maintenance.save_notification(apt_id, tenant_name, worker, date, time, desc)
+
             messagebox.showinfo("Success", "Maintenance request submitted.")
+            # simulate notifying the tenant via email and sms
+            messagebox.showinfo("Notification Sent", f"Tenant ({tenant_name}) has been notified of their maintenance visit via email and SMS.")
+
             self.show_maintenance()
+
         except ValueError as e:
-            messagebox.showerror("Input Error", str(e))
+                messagebox.showerror("Input Error", str(e))
+
+
+    def show_notifications(self):
+        self._clear()
+        self._activate("  Notifications")
+        self._page_header("Tenant Notifications",
+                          "Communications sent to tenants")
+
+        # fetch all saved notifications from the database
+        notifs = self.maintenance.get_all_notifications()
+
+        if not notifs:
+            tk.Label(self.main, text="No notifications yet.",
+                    font=("Helvetica", 11),
+                    bg=BG_BASE, fg=TEXT_MUTED).pack(pady=40)
+            return
+
+        # display each notification as a card with tenant name and message
+        for i, n in enumerate(notifs):
+            bg = BG_ROW_ODD if i % 2 else BG_CARD
+            card = tk.Frame(self.main, bg=bg,
+                            highlightthickness=1,
+                            highlightbackground=BORDER)
+            card.pack(fill="x", padx=32, pady=(0, 6))
+
+            top = tk.Frame(card, bg=bg)
+            top.pack(fill="x", padx=16, pady=(10, 2))
+            tk.Label(top, text=f"Apt {n['apartment_id']}  -  {n['tenant_name']}",
+                     font=("Helvetica", 10, "bold"),
+                     bg=bg, fg=TEXT_BRIGHT).pack(side="left")
+            tk.Label(top, text=n["created_at"],
+                     font=("Helvetica", 9),
+                     bg=bg, fg=TEXT_MUTED).pack(side="right")
+
+            # full notification message shown to staff to relay to tenant
+
+            # Tahiyah - overdue rent notification integrated
+            if "overdue" in n['description'].lower():
+                msg = (f"Dear {n['tenant_name']},\n"
+                       f"This is a reminder that your rent payment is overdue.\n"
+                       f"Please make the payment as soon as possible to avoid any late fees or disruption of services.\n"
+                       f"If you have already made the payment, please disregard this message.\n"
+                       f"Contact us if you need assistance or to discuss payment options.")
+            else:
+                msg = (f"Dear {n['tenant_name']},\n"
+                   f"We are writing to inform you that a maintenance visit has been scheduled "
+                   f"regarding: {n['description']}.\n"
+                   f"Date: {n['scheduled_date']}  |  Time: {n['scheduled_time']}  "
+                   f"|  Worker: {n['worker_name']}\n"
+                   f"Please ensure access to the property at this time. "
+                   f"Contact us if you need to reschedule.")
+            tk.Label(card, text=msg,
+                     font=("Helvetica", 10),
+                     bg=bg, fg=TEXT_MAIN,
+                     anchor="w").pack(fill="x", padx=16, pady=(0, 10))
+        
 
     # ================================================================= #
     #  POPUPS                                                            #
@@ -861,53 +997,65 @@ class ApartmentApp:
         return p
 
     def _resolve_popup(self, tree):
-        sel=tree.selection()
-        if not sel:
-            messagebox.showwarning("Nothing selected",
-                                   "Select a request to resolve.")
+        selected = tree.selection()
+        if not selected:
+            messagebox.showwarning("Nothing selected", "Select a request first.")
             return
-        vals=tree.item(sel[0])["values"]
 
-        # vals[4] is the Status column - check its not already resolved
+        item = tree.item(selected[0])
+        vals = item["values"]
+        req_id = vals[0]
+        apt_id = vals[1]
+        desc   = vals[2]
+
         if "RESOLVED" in str(vals[4]):
             messagebox.showinfo("Already resolved",
                                 "This request is already resolved.")
             return
 
-        p   =self._popup(f"Resolve Request #{vals[0]}", 460, 500)
-        form=tk.Frame(p, bg=BG_SURFACE, padx=36)
+        p = self._popup(f"Resolve Request #{req_id}", 460, 380)
+
+        tk.Label(p, text=f"Apt {apt_id}  .  {desc}",
+                 font=("Helvetica", 9), bg=BG_SURFACE,
+                 fg=TEXT_MUTED).pack(pady=(0, 10))
+
+        form = tk.Frame(p, bg=BG_SURFACE, padx=36)
         form.pack(fill="x")
 
-        tk.Label(p, text=f"Apt {vals[1]}  ·  {vals[2]}",
-                 font=("Helvetica", 9), bg=BG_SURFACE, fg=TEXT_MUTED
-                 ).pack(pady=(0, 14))
+        cost_v  = tk.StringVar()
+        time_v  = tk.StringVar()
+        notes_v = tk.StringVar()
 
-        cost_v=tk.StringVar()
-        time_v=tk.StringVar()
-        for lbl, var in [("Cost (£)", cost_v), ("Time taken (hrs)", time_v)]:
-            row=tk.Frame(form, bg=BG_SURFACE)
+        for lbl, var in [("Cost (£)", cost_v),
+                         ("Time taken (hrs)", time_v),
+                         ("How it was fixed", notes_v)]:
+            row = tk.Frame(form, bg=BG_SURFACE)
             row.pack(fill="x", pady=6)
             tk.Label(row, text=lbl, font=("Helvetica", 10),
                      bg=BG_SURFACE, fg=TEXT_MUTED,
                      width=18, anchor="w").pack(side="left")
-            self._entry(row, var, 20).pack(side="left", padx=(8,0), ipady=5)
+            self._entry(row, var, 20).pack(side="left", padx=(8, 0), ipady=5)
 
-        def confirm():
+        def submit():
             try:
-                c=cost_v.get().strip()
-                t=time_v.get().strip()
-                if not c or not t:
-                    raise ValueError("both fields are required")
-                self.manager.resolve_maintenance_request(
-                    vals[0], float(c), int(t))
-                messagebox.showinfo("Done", "Request marked as resolved.")
+                c = cost_v.get().strip()
+                t = time_v.get().strip()
+                n = notes_v.get().strip()
+                if not c or not t or not n:
+                    raise ValueError("All fields are required.")
+                self.manager.resolve_maintenance_request(req_id, float(c), int(t), n)
+                messagebox.showinfo("Resolved",
+                                    f"Request #{req_id} marked as resolved.\n"
+                                    f"Cost: £{float(c):.2f}  |  Time: {t} hr(s)\n"
+                                    f"Notes: {n}")
                 p.destroy()
                 self.show_maintenance()
             except ValueError as e:
                 messagebox.showerror("Input Error", str(e))
 
-        PillButton(p, "Confirm Resolution", confirm).pack(pady=20)
-
+        PillButton(p, "Confirm Resolution", submit).pack(pady=20)
+    
+       
     def _edit_popup(self, tree):
         sel=tree.selection()
         if not sel:
@@ -1025,14 +1173,13 @@ class ApartmentApp:
             return
 
         p = self._popup(f"Edit Tenant #{tenant_id}", 400, 300)
-        # payment status label
-        status = "⚠ Overdue" if check_late_payment_tenant(tenant_id) else "✅ Up to date"
 
+        status = "⚠ Overdue" if check_late_payment_tenant(tenant_id) else "✅ Up to date"
         tk.Label(p,
-            text=f"Payment Status: {status}",
-            bg=BG_SURFACE,
-            fg=RED if "Overdue" in status else TEAL,
-            font=("Helvetica", 10, "bold")
+                 text=f"Payment Status: {status}",
+                   bg=BG_SURFACE,
+                   fg=RED if "Overdue" in status else TEAL,
+                     font=("Helvetica", 10, "bold")
         ).pack(pady=5)
 
         name = tk.StringVar()
@@ -1048,7 +1195,6 @@ class ApartmentApp:
         def save():
             if not messagebox.askyesno("Confirm", "Save changes to tenant details?"):
                 return
-
             edit_tenant(tenant_id, name.get(), email.get(), phone.get())
             messagebox.showinfo("Success", "Tenant updated")
             p.destroy()
@@ -1096,25 +1242,46 @@ class ApartmentApp:
         
         
 
-#fix here 
+
     def _check_late_popup(self, tree):
         sel = tree.selection()
         if not sel:
             return
 
-        tenant_id = tree.item(sel[0])["values"][6]
+        vals = tree.item(sel[0])["values"]
+        tenant_id = vals[6]
+        apt_id = vals[0]
 
         if tenant_id == "-":
             return
 
         if check_late_payment_tenant(tenant_id):
-            messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
 
-            # simulate notification being sent to tenant
-            messagebox.showinfo("Notification Sent", "Tenant has been notified of late payment via email and SMS")
+            # popup to alert staff of late payment and confirm tenant has been notified - in a real system this would trigger an email and SMS to the tenant automatically
+            messagebox.showwarning("Late Payment", "⚠ This tenant has overdue payments")
+            
+            # get tenant name
+            tenants = self.manager.get_all_tenants()
+            tenant = next((t for t in tenants if t.tenant_id == tenant_id), None)
+            tenant_name = tenant.full_name if tenant else f"Tenant {tenant_id}"
+
+            self.maintenance.save_notification(
+                apartment_id=apt_id,
+                tenant_name=tenant_name,
+                worker_name="System",
+                scheduled_date="-",
+                scheduled_time="-",
+                description="Overdue rent Payment"
+            )
+
+            # confirmation
+            messagebox.showinfo(
+                "Notification Sent",
+                f"{tenant_name} has been notified of their overdue payment via email and SMS."
+            )
+        
         else:
             messagebox.showinfo("OK", "No late payments")
-
 
     def _delete_tenant_popup(self, tree):
         sel = tree.selection()
