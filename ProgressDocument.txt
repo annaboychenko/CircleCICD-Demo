@@ -29,7 +29,7 @@ Tahiyah:
 -Security - when adding a tenant all components must be filled
 -Basic email validation - must contain "@" and "."
 -Tenant recieves notification if rent is overdue (simulated notification)
-
+-Notication appears on the tenant notifaction page that hamna has made.
 
 Khadija:
 -Developed the reporting module for the system
@@ -60,6 +60,7 @@ Hamna:
 
 
 To do:
+
 
 Reporting: 
 -generate occupancy reports, filtered by apartment or city 
