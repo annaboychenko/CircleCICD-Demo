@@ -236,6 +236,10 @@ class ApartmentManager:
         cursor=conn.cursor()
 
         apt=self.get_apartment_by_id(apartment_id)
+        apt = self.get_apartment_by_id(apartment_id)
+        if apt is None:
+            raise ValueError("Apartment not found")
+
         location=apt.location
         # 1. Check apartment exists and is vacant
         cursor.execute("SELECT monthly_rent, status FROM apartments WHERE apartment_id=?", (apartment_id,))

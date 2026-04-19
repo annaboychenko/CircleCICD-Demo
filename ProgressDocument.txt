@@ -19,6 +19,7 @@ Grace:
 -notification on screen if payment(s) are late
 -make the switch between login.py and apartment_gui.py seamless
 -fixed small issues near the end
+-fixed delete tenant button
 
 
 Tahiyah:

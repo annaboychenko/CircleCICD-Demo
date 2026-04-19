@@ -127,7 +127,8 @@ class ApartmentApp:
     def __init__(self, root):
         self.root=root
         self.root.title("PAMS - Apartment Management")
-        self.root.geometry("1200x740")
+        #self.root.geometry("1200x740")
+        self.root.state("zoomed")
         self.root.minsize(960, 600)
         self.root.configure(bg=BG_BASE)
 
@@ -474,7 +475,7 @@ class ApartmentApp:
             lambda: self._check_late_popup(tree),
             AMBER_BG, AMBER, "#3a2a0a"),
             ("✕ Delete Tenant",
-            lambda: self._delete_tenant_popup(tree),
+            lambda: self.delete_tenant_popup(),
             RED_BG, RED, "#3a1818"),
         ])
 
@@ -1171,8 +1172,9 @@ class ApartmentApp:
         if tenant_id == "-" or tenant_id is None:
             messagebox.showinfo("No Tenant", "No tenant assigned")
             return
+        
 
-        p = self._popup(f"Edit Tenant #{tenant_id}", 400, 300)
+        p = self._popup(f"Edit Tenant #{tenant_id}", 400, 350)
 
         status = "⚠ Overdue" if check_late_payment_tenant(tenant_id) else "✅ Up to date"
         tk.Label(p,
@@ -1283,20 +1285,63 @@ class ApartmentApp:
         else:
             messagebox.showinfo("OK", "No late payments")
 
-    def _delete_tenant_popup(self, tree):
-        sel = tree.selection()
-        if not sel:
-            return
 
-        tenant_id = tree.item(sel[0])["values"][6]
+    def delete_tenant_popup(self): 
+        popup = tk.Toplevel(self.root)
+        popup.title("Delete Tenant")
+        popup.configure(bg=BG_CARD)
+        # --- centre the popup ---
+        w, h = 400, 220
+        popup.update_idletasks()
+        screen_w = popup.winfo_screenwidth()
+        screen_h = popup.winfo_screenheight()
+        x = (screen_w // 2) - (w // 2)
+        y = (screen_h // 2) - (h // 2)
+        popup.geometry(f"{w}x{h}+{x}+{y}")
+        # -------------------------
+        popup.grab_set()
 
-        if tenant_id == "-":
-            return
+        tk.Label(
+            popup, text="Select Tenant to Delete",
+            font=("Helvetica", 12, "bold"),
+            bg=BG_CARD, fg=TEXT_BRIGHT
+        ).pack(pady=(20, 10))
 
-        if messagebox.askyesno("Confirm", "Delete this tenant completely?"):
-            delete_tenant(tenant_id)
-            messagebox.showinfo("Deleted", "Tenant removed from system")
-            self.show_apartments()
+        # Fetch all tenants
+        tenants = self.manager.get_all_tenants()
+        tenant_options = [
+            f"{t.tenant_id} - {t.full_name}" for t in tenants
+        ]
+
+        selected = tk.StringVar()
+        combo = ttk.Combobox(
+            popup, textvariable=selected,
+            values=tenant_options, state="readonly",
+            style="Apt.TCombobox", width=35
+        )
+        combo.pack(pady=10)
+
+        def confirm_delete():
+            if not selected.get():
+                messagebox.showerror("Error", "Please select a tenant.")
+                return
+
+            tenant_id = int(selected.get().split("-")[0].strip())
+
+            if messagebox.askyesno("Confirm", "Are you sure you want to delete this tenant?"):
+                try:
+                    delete_tenant(tenant_id)
+                    messagebox.showinfo("Deleted", "Tenant removed from system.")
+                finally:
+                    popup.destroy()
+                    self.show_apartments()
+
+        PillButton(
+            popup, "Delete Tenant", confirm_delete,
+            bg=RED_BG, fg=RED, hover_bg="#3a1818"
+        ).pack(pady=20)
+
+    
 
 
 # Payment history and early termination fee popups, which are accessible from the apartment page but pull data from the finance module
