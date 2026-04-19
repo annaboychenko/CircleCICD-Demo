@@ -8,10 +8,13 @@ class LoginApp:
     def __init__(self, root):
         self.root = root
         self.root.title("PAMS Login")
-        self.root.geometry("700x600")
+        
+        self.root.state("zoomed")
+        self.root.minsize (700,600)
         self.root.configure(bg="#111318")
 
         self._build_ui()
+
 
     def _build_ui(self):
         tk.Label(
@@ -69,16 +72,19 @@ class LoginApp:
             role, name = user
             messagebox.showinfo("Success", f"Welcome {name} ({role})")
 
-            self.root.destroy()
+
             self.open_main_app(role)
         else:
             messagebox.showerror("Error", "Invalid username or password")
 
     def open_main_app(self, role):
-        root = tk.Tk()
-        app = ApartmentApp(root)
+    # Clear login UI instead of destroying the window
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        # Load the main application inside the same root
+        app = ApartmentApp(self.root)
         app.user_role = role
-        root.mainloop()
 
 
 if __name__ == "__main__":

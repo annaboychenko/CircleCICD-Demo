@@ -542,6 +542,12 @@ class ApartmentManager:
             ("Manchester","Chloe Davis", "chloe@example.com", "07345678901", "EF345678E", "Designer", "Clive Lewis", 7, "12 months", "01-03-2025", "01-03-2026", 1100, 1100),
         ])
 
+        cursor.execute("""
+        INSERT INTO invoices (tenant_id, apartment_id, issue_date, due_date, amount, status)
+            VALUES
+            (3, 7, '01-04-2026', '10-03-2026', 1100.00, 'overdue')
+        """)
+
         
         conn.commit()
         conn.close()

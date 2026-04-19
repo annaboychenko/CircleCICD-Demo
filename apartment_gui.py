@@ -692,7 +692,7 @@ class ApartmentApp:
 
         self._av_start=tk.StringVar()
         start_widget=self._form_row(form, "Lease Start",
-            lambda r: DateEntry(r, textvariable=self._mv_date, date_pattern="dd-mm-yyyy"))
+            lambda r: DateEntry(r, textvariable=self._av_start, date_pattern="dd-mm-yyyy"))
 
         
         self._av_period.trace_add("write", lambda *args: self._update_lease_end())
