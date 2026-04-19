@@ -17,6 +17,8 @@ Grace:
 -generate invoice: can chose a tenant in an occupied apartment and create invoice 
 -record payment: can chose an unpaid invoice and mark as paid. When mark as paid a receipt is shown with name, apartment info, amount paid and date paid
 -notification on screen if payment(s) are late
+-make the switch between login.py and apartment_gui.py seamless
+-fixed small issues near the end
 
 
 Tahiyah:
