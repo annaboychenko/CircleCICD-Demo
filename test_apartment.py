@@ -49,6 +49,90 @@ def setup_test_db():
         )
     """)
 
+    # users table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+            username   TEXT    NOT NULL UNIQUE,
+            password   TEXT    NOT NULL,
+            role       TEXT    NOT NULL DEFAULT 'front_desk',
+            location   TEXT    DEFAULT NULL,
+            full_name  TEXT    DEFAULT NULL,
+            email      TEXT    DEFAULT NULL
+        )
+    """)
+
+    # tenants table 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tenants (
+            tenant_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            location        TEXT    DEFAULT NULL,
+            full_name       TEXT    NOT NULL,
+            email           TEXT    NOT NULL,
+            phone           TEXT    NOT NULL,
+            ni_number       TEXT    NOT NULL UNIQUE,
+            occupation      TEXT    DEFAULT NULL,
+            tenant_references      TEXT    DEFAULT NULL,
+            apartment_id    INTEGER DEFAULT NULL,
+            lease_period    TEXT    DEFAULT NULL,
+            lease_start     TEXT    DEFAULT NULL,
+            lease_end       TEXT    DEFAULT NULL,
+            deposit_amount  REAL    DEFAULT NULL,
+            monthly_rent    REAL    DEFAULT NULL,
+            FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
+        )
+    """)
+
+    # invoice table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS invoices (
+            invoice_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id      INTEGER NOT NULL,
+            apartment_id   INTEGER NOT NULL,
+            issue_date     TEXT NOT NULL,
+            due_date       TEXT NOT NULL,
+            amount         REAL NOT NULL,
+            status         TEXT NOT NULL DEFAULT 'unpaid',
+            FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id),
+            FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
+        )
+    """)
+
+    # payments table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS payments (
+            payment_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id      INTEGER NOT NULL,
+            apartment_id   INTEGER NOT NULL,
+            invoice_id INTEGER NOT NULL,
+            amount         REAL    NOT NULL,
+            due_date       TEXT    NOT NULL,
+            paid_date      TEXT    DEFAULT NULL,
+            status         TEXT    NOT NULL DEFAULT 'pending',
+            FOREIGN KEY (tenant_id)   REFERENCES tenants(tenant_id),
+            FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id),
+            FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+        )
+    """)
+
+    #notifications table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    #workers table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS workers (
+            worker_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            location  TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -329,13 +413,25 @@ class TestApartmentManager(unittest.TestCase):
             lease_end="01-01-2026"
         )        
         with self.assertRaises(ValueError):
-            manager.assign_tenant(apt_id, 202)
+            manager.assign_tenant(
+                tenant_id=202,
+                apartment_id=apt_id,
+                lease_period="12 months",
+                lease_start="01-01-2025",
+                lease_end="01-01-2026"
+            )
 
     def test_assign_tenant_to_nonexistent_apartment_raises_error(self):
         """assigning a tenant to a missing apartment id should fail"""
         manager = ApartmentManager()
         with self.assertRaises(ValueError):
-            manager.assign_tenant(9999, 101)
+            manager.assign_tenant(
+                tenant_id=101,
+                apartment_id=9999,
+                lease_period="12 months",
+                lease_start="01-01-2025",
+                lease_end="01-01-2026"
+            )
 
     def test_remove_tenant_resets_to_vacant_in_db(self):
         """removing a tenant should set status back to vacant in the db"""
