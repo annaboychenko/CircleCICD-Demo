@@ -44,6 +44,7 @@ def setup_test_db():
             date_resolved  TEXT    DEFAULT NULL,
             cost           REAL    DEFAULT NULL,
             time_taken     INTEGER DEFAULT NULL,
+            resolution_notes TEXT DEFAULT NULL,
             FOREIGN KEY (apartment_id) REFERENCES apartments(apartment_id)
         )
     """)
@@ -290,7 +291,13 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(apt_id, 101)
+        manager.assign_tenant(
+            tenant_id=101,
+            apartment_id=apt_id,
+            lease_period="12 months",
+            lease_start="01-01-2025",
+            lease_end="01-01-2026"
+        )     
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "occupied")
 
@@ -299,7 +306,13 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(apt_id, 101)
+        manager.assign_tenant(
+            tenant_id=101,
+            apartment_id=apt_id,
+            lease_period="12 months",
+            lease_start="01-01-2025",
+            lease_end="01-01-2026"
+        )       
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.tenant_id, 101)
 
@@ -308,7 +321,13 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(apt_id, 101)
+        manager.assign_tenant(
+            tenant_id=101,
+            apartment_id=apt_id,
+            lease_period="12 months",
+            lease_start="01-01-2025",
+            lease_end="01-01-2026"
+        )        
         with self.assertRaises(ValueError):
             manager.assign_tenant(apt_id, 202)
 
@@ -323,7 +342,13 @@ class TestApartmentManager(unittest.TestCase):
         manager = ApartmentManager()
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(apt_id, 101)
+        manager.assign_tenant(
+            tenant_id=101,
+            apartment_id=apt_id,
+            lease_period="12 months",
+            lease_start="01-01-2025",
+            lease_end="01-01-2026"
+        )           
         manager.remove_tenant(apt_id)
         updated = manager.get_apartment_by_id(apt_id)
         self.assertEqual(updated.status, "vacant")
@@ -450,7 +475,13 @@ class TestApartmentManager(unittest.TestCase):
         manager.add_apartment("Bristol", "2-bedroom flat", 1200.00, 2)
         manager.add_apartment("London",  "Studio",          950.00, 1)
         apt_id = manager.get_all_apartments()[0].apartment_id
-        manager.assign_tenant(apt_id, 101)
+        manager.assign_tenant(
+            tenant_id=101,
+            apartment_id=apt_id,
+            lease_period="12 months",
+            lease_start="01-01-2025",
+            lease_end="01-01-2026"
+        )        
         summary = manager.get_occupancy_summary()
         self.assertEqual(summary["total"],    2)
         self.assertEqual(summary["occupied"], 1)
