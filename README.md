@@ -8,12 +8,14 @@ The ProgressDocument explains what has been completed and what still needs to be
 
 ### To run login in page 
 source .venv/bin/activate
+
+
 ### then either 
-- python login.py
+- python login.py to use the login page 
     
 or
 
-- python apartment_gui.py
+- python apartment_gui.py for quick testing
 
 ### login details
 Use any of these to log in:
