@@ -547,11 +547,15 @@ class ApartmentManager:
         ])
 
         cursor.execute("""
-        INSERT INTO invoices (tenant_id, apartment_id, issue_date, due_date, amount, status)
+        INSERT INTO invoices (invoice_id, tenant_id, apartment_id, issue_date, due_date, amount, status)
             VALUES
-            (3, 7, '01-04-2026', '10-03-2026', 1100.00, 'overdue')
+            (1, 3, 7, '01-04-2026', '10-03-2026', 1100.00, 'overdue')
         """)
 
+        cursor.execute("""
+            INSERT INTO payments (tenant_id, apartment_id, invoice_id, amount, due_date, paid_date, status)
+            VALUES (3, 7, 1, 1100.00, '10-03-2026', date('now'), 'paid (late)')
+        """)
         
         conn.commit()
         conn.close()

@@ -17,7 +17,7 @@
 #pip install python-dateutil
 #pip install tkcalendar
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -25,6 +25,7 @@ import re
 
 from apartmentAndTenant import ApartmentManager
 from payments import FinanceManager
+from reporting import ReportManager
 from maintenance import MaintenanceManager
 import platform
 
@@ -140,6 +141,7 @@ class ApartmentApp:
         self.finance=FinanceManager ()
         self.maintenance = MaintenanceManager()
         self.manager.insert_mock_data()
+        self.report_manager=ReportManager()
         
 
         self._nav_rows={}   # stores references to nav buttons so we can highlight them
@@ -236,6 +238,9 @@ class ApartmentApp:
         self._nav_row(sb, "  Payments Overview", self.show_payments)
         self._nav_row(sb, "  Generate Invoice", self.show_invoice_form)
         self._nav_row(sb, "  Record Payment", self.show_record_payment)
+
+        self._section_lbl(sb, "REPORTS")
+        self._nav_row(sb, "  Reports ", self.show_reports)
 
 
         # spacer then credit
@@ -1583,6 +1588,265 @@ class ApartmentApp:
         tk.Label(p, text=f"Apartment: {data['apartment']}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Amount Paid: £{data['amount']:.2f}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
         tk.Label(p, text=f"Paid Date: {paid_date}", bg=BG_SURFACE, fg=TEXT_MAIN).pack(pady=4)
+
+
+    # ================================================================= #
+    #  REPORTS PAGE                                                     #
+    # ================================================================= #
+
+    def show_reports(self):
+        self._clear()
+        self._activate("  Reports Dashboard")
+        self._page_header(
+            "Reports",
+            "Occupancy, financial, and maintenance reports"
+        )
+
+        # Controls
+        control_bar = tk.Frame(self.main, bg=BG_BASE)
+        control_bar.pack(fill="x", padx=32, pady=(0, 16))
+
+        tk.Label(
+            control_bar,
+            text="Filter by City:",
+            font=("Helvetica", 10, "bold"),
+            bg=BG_BASE,
+            fg=TEXT_BRIGHT
+        ).pack(side="left", padx=(0, 10))
+
+        city_options = ["All", "Bristol", "London", "Manchester", "Cardiff"]
+        self._report_city_var = tk.StringVar(value="All")
+
+        city_combo = ttk.Combobox(
+            control_bar,
+            textvariable=self._report_city_var,
+            values=city_options,
+            state="readonly",
+            style="Apt.TCombobox",
+            width=18
+        )
+        city_combo.pack(side="left", padx=(0, 12))
+
+        PillButton(
+            control_bar,
+            "Generate Report",
+            self._refresh_reports,
+            bg=TEAL_BG,
+            fg=TEAL,
+            hover_bg="#0f2e2a"
+        ).pack(side="left", padx=(0, 8))
+
+        PillButton(
+            control_bar,
+            "Export Report",
+            self._export_report,
+            bg=BG_CARD,
+            fg=TEXT_MAIN,
+            hover_bg="#272c3e"
+        ).pack(side="left")
+
+        self._render_reports_content("All")
+
+    def _refresh_reports(self):
+        selected_city = self._report_city_var.get()
+        self._render_reports_content(selected_city)
+
+    def _render_reports_content(self, selected_city):
+        # Keep page header + control bar, remove older report widgets
+        for widget in self.main.winfo_children()[2:]:
+            widget.destroy()
+
+        financial = self.report_manager.get_financial_summary()
+        maintenance = self.report_manager.get_maintenance_summary()
+
+        if selected_city == "All":
+            occupancy = self.report_manager.get_occupancy_by_city()
+            maintenance_city = self.report_manager.get_maintenance_costs_by_city()
+        else:
+            occupancy = [self.report_manager.get_occupancy_for_city(selected_city)]
+            maintenance_city = [self.report_manager.get_maintenance_costs_for_city(selected_city)]
+
+        tk.Label(
+            self.main,
+            text=f"Last updated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
+            font=("Helvetica", 9),
+            bg=BG_BASE,
+            fg=TEXT_MUTED
+        ).pack(anchor="w", padx=32, pady=(0, 10))
+
+        # Summary cards row 1
+        row1 = tk.Frame(self.main, bg=BG_BASE)
+        row1.pack(fill="x", padx=32, pady=(0, 12))
+
+        StatCard(row1, financial["total_invoices"], "Invoices", TEAL).pack(side="left", padx=(0, 10))
+        StatCard(row1, f"£{financial['total_billed']:.2f}", "Total Billed", TEXT_MUTED).pack(side="left", padx=(0, 10))
+        StatCard(row1, f"£{financial['collected_rent']:.2f}", "Collected", TEAL).pack(side="left", padx=(0, 10))
+        StatCard(row1, f"£{financial['pending_rent']:.2f}", "Pending", AMBER).pack(side="left", padx=(0, 10))
+
+        # Summary cards row 2
+        row2 = tk.Frame(self.main, bg=BG_BASE)
+        row2.pack(fill="x", padx=32, pady=(0, 18))
+
+        StatCard(row2, f"£{financial['overdue_rent']:.2f}", "Overdue", RED).pack(side="left", padx=(0, 10))
+        StatCard(row2, f"{financial['collection_rate']}%", "Collection Rate", TEAL).pack(side="left", padx=(0, 10))
+        StatCard(row2, maintenance["total_requests"], "Maintenance Requests", TEXT_MUTED).pack(side="left", padx=(0, 10))
+        StatCard(row2, f"£{maintenance['total_maintenance_cost']:.2f}", "Maintenance Cost", AMBER).pack(side="left", padx=(0, 10))
+
+        # Occupancy table
+        occ_title = "Occupancy by City" if selected_city == "All" else f"Occupancy Report: {selected_city}"
+        tk.Label(
+            self.main,
+            text=occ_title,
+            font=("Helvetica", 13, "bold"),
+            bg=BG_BASE,
+            fg=TEXT_BRIGHT
+        ).pack(anchor="w", padx=32, pady=(0, 8))
+
+        occ_wrap = tk.Frame(self.main, bg=BG_BASE)
+        occ_wrap.pack(fill="x", padx=32, pady=(0, 10))
+
+        occ_cols = ("City", "Total Apartments", "Occupied", "Vacant", "Occupancy Rate")
+        occ_tree = ttk.Treeview(
+            occ_wrap,
+            columns=occ_cols,
+            show="headings",
+            height=5,
+            style="Apt.Treeview"
+        )
+
+        for col, width in zip(occ_cols, [180, 140, 110, 110, 140]):
+            occ_tree.heading(col, text=col)
+            occ_tree.column(col, width=width, anchor="center")
+        occ_tree.column("City", anchor="w")
+
+        if occupancy:
+            for i, item in enumerate(occupancy):
+                row_tag = "odd" if i % 2 else ""
+                occ_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        item["location"],
+                        item["total_apartments"],
+                        item["occupied"],
+                        item["vacant"],
+                        f"{item['occupancy_rate']}%"
+                    ),
+                    tags=(row_tag,)
+                )
+        else:
+            occ_tree.insert("", "end", values=("No data available", "", "", "", ""))
+
+        occ_tree.pack(fill="x")
+
+        # Maintenance table
+        maint_title = "Maintenance Costs by City" if selected_city == "All" else f"Maintenance Costs: {selected_city}"
+        tk.Label(
+            self.main,
+            text=maint_title,
+            font=("Helvetica", 13, "bold"),
+            bg=BG_BASE,
+            fg=TEXT_BRIGHT
+        ).pack(anchor="w", padx=32, pady=(14, 8))
+
+        maint_wrap = tk.Frame(self.main, bg=BG_BASE)
+        maint_wrap.pack(fill="x", padx=32, pady=(0, 10))
+
+        maint_cols = ("City", "Total Requests", "Total Cost (£)")
+        maint_tree = ttk.Treeview(
+            maint_wrap,
+            columns=maint_cols,
+            show="headings",
+            height=5,
+            style="Apt.Treeview"
+        )
+
+        for col, width in zip(maint_cols, [220, 180, 180]):
+            maint_tree.heading(col, text=col)
+            maint_tree.column(col, width=width, anchor="center")
+        maint_tree.column("City", anchor="w")
+
+        if maintenance_city:
+            for i, item in enumerate(maintenance_city):
+                row_tag = "odd" if i % 2 else ""
+                maint_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        item["location"],
+                        item["total_requests"],
+                        f"£{item['total_cost']:.2f}"
+                    ),
+                    tags=(row_tag,)
+                )
+        else:
+            maint_tree.insert("", "end", values=("No data available", "", ""))
+
+        maint_tree.pack(fill="x")
+
+    def _export_report(self):
+        selected_city = self._report_city_var.get()
+
+        financial = self.report_manager.get_financial_summary()
+        maintenance = self.report_manager.get_maintenance_summary()
+
+        if selected_city == "All":
+            occupancy = self.report_manager.get_occupancy_by_city()
+            maintenance_city = self.report_manager.get_maintenance_costs_by_city()
+        else:
+            occupancy = [self.report_manager.get_occupancy_for_city(selected_city)]
+            maintenance_city = [self.report_manager.get_maintenance_costs_for_city(selected_city)]
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")],
+            title="Save Report As"
+        )
+
+        if not filepath:
+            return
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("PAMS REPORT DASHBOARD\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Generated: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}\n")
+            f.write(f"City Filter: {selected_city}\n\n")
+
+            f.write("FINANCIAL SUMMARY\n")
+            f.write("-" * 30 + "\n")
+            f.write(f"Total Invoices: {financial['total_invoices']}\n")
+            f.write(f"Total Billed: £{financial['total_billed']:.2f}\n")
+            f.write(f"Collected Rent: £{financial['collected_rent']:.2f}\n")
+            f.write(f"Pending Rent: £{financial['pending_rent']:.2f}\n")
+            f.write(f"Overdue Rent: £{financial['overdue_rent']:.2f}\n")
+            f.write(f"Collection Rate: {financial['collection_rate']}%\n\n")
+
+            f.write("MAINTENANCE SUMMARY\n")
+            f.write("-" * 30 + "\n")
+            f.write(f"Total Requests: {maintenance['total_requests']}\n")
+            f.write(f"Resolved Requests: {maintenance['resolved_requests']}\n")
+            f.write(f"Open Requests: {maintenance['open_requests']}\n")
+            f.write(f"Total Maintenance Cost: £{maintenance['total_maintenance_cost']:.2f}\n\n")
+
+            f.write("OCCUPANCY REPORT\n")
+            f.write("-" * 30 + "\n")
+            for item in occupancy:
+                f.write(
+                    f"{item['location']}: Total={item['total_apartments']}, "
+                    f"Occupied={item['occupied']}, Vacant={item['vacant']}, "
+                    f"Rate={item['occupancy_rate']}%\n"
+                )
+
+            f.write("\nMAINTENANCE COSTS BY CITY\n")
+            f.write("-" * 30 + "\n")
+            for item in maintenance_city:
+                f.write(
+                    f"{item['location']}: Requests={item['total_requests']}, "
+                    f"Cost=£{item['total_cost']:.2f}\n"
+                )
+
+        messagebox.showinfo("Export Complete", f"Report saved successfully to:\n{filepath}")
+        
 
 
 # ------------------------------------------------------------------ #
