@@ -1,15 +1,28 @@
 # Grace Doyle - Payments Test Suite
-# Tests backend logic ONLY (CircleCI safe)
+# Fully isolated, CircleCI-safe backend tests
 
 import unittest
 import sqlite3
 import os
 from datetime import date, timedelta
 
-from payments import FinanceManager
 import database as db_module
 
-TEST_DB = "test_pams_payments.db"
+# ---------------------------------------------------------
+#  IMPORTANT: Override DB BEFORE importing FinanceManager
+# ---------------------------------------------------------
+
+TEST_DB = "tests/test_pams_payments.db"
+
+def _test_get_connection():
+    conn = sqlite3.connect(TEST_DB)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+# Override BEFORE importing payments.py
+db_module.get_connection = _test_get_connection
+
+from payments import FinanceManager
 
 
 # ---------------------------------------------------------
@@ -17,8 +30,7 @@ TEST_DB = "test_pams_payments.db"
 # ---------------------------------------------------------
 
 def setup_test_db():
-    conn = sqlite3.connect(TEST_DB)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = _test_get_connection()
     c = conn.cursor()
 
     # apartments
@@ -92,15 +104,6 @@ def setup_test_db():
     conn.close()
 
 
-# Override get_connection to use test DB
-_original_get_connection = db_module.get_connection
-
-def _test_get_connection():
-    conn = sqlite3.connect(TEST_DB)
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-
 # ---------------------------------------------------------
 #  TEST SUITE
 # ---------------------------------------------------------
@@ -108,20 +111,31 @@ def _test_get_connection():
 class TestFinanceManager(unittest.TestCase):
 
     def setUp(self):
+        # Reset DB
+        if os.path.exists(TEST_DB):
+            os.remove(TEST_DB)
+
         setup_test_db()
-        db_module.get_connection = _test_get_connection
         self.fm = FinanceManager()
 
-        # Insert a tenant + apartment for testing
+        # Insert required tenant + apartment
         conn = _test_get_connection()
         c = conn.cursor()
-        c.execute("INSERT INTO apartments (location, apt_type, monthly_rent, num_rooms) VALUES ('Bristol','Flat',1200,2)")
-        c.execute("INSERT INTO tenants (full_name, ni_number, apartment_id) VALUES ('John Doe','AA123456A',1)")
+
+        c.execute("""
+            INSERT INTO apartments (apartment_id, location, apt_type, monthly_rent, num_rooms, status)
+            VALUES (1, 'Bristol', 'Flat', 1200, 2, 'occupied')
+        """)
+
+        c.execute("""
+            INSERT INTO tenants (tenant_id, full_name, ni_number, apartment_id)
+            VALUES (1, 'John Doe', 'AA123456A', 1)
+        """)
+
         conn.commit()
         conn.close()
 
     def tearDown(self):
-        db_module.get_connection = _original_get_connection
         if os.path.exists(TEST_DB):
             os.remove(TEST_DB)
 
@@ -162,7 +176,6 @@ class TestFinanceManager(unittest.TestCase):
     # ---------------------------------------------------------
 
     def test_update_overdue_invoices(self):
-        # Create invoice with yesterday's date
         yesterday = (date.today() - timedelta(days=1)).strftime("%d-%m-%Y")
         self.fm.create_invoice(1, 1, 1200, yesterday)
 
@@ -183,6 +196,7 @@ class TestFinanceManager(unittest.TestCase):
     def test_get_all_invoices(self):
         self.fm.create_invoice(1, 1, 1200, "01-05-2026")
         invoices = self.fm.get_all_invoices()
+
         self.assertEqual(len(invoices), 1)
         self.assertEqual(invoices[0]["tenant_name"], "John Doe")
 
