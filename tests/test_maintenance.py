@@ -1,15 +1,26 @@
-# Grace Doyle - Maintenance Test Suite
-# Tests backend logic ONLY (CircleCI safe)
+# Grace Doyle - Maintenance Test Suite (Corrected)
 
 import unittest
 import sqlite3
 import os
-from datetime import datetime
 
-from maintenance import MaintenanceManager
 import database as db_module
 
-TEST_DB = "test_pams_maintenance.db"
+# ---------------------------------------------------------
+#  IMPORTANT: Override DB BEFORE importing MaintenanceManager
+# ---------------------------------------------------------
+
+TEST_DB = "tests/test_pams_maintenance.db"
+
+def _test_get_connection():
+    conn = sqlite3.connect(TEST_DB)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+# Override BEFORE importing maintenance.py
+db_module.get_connection = _test_get_connection
+
+from maintenance import MaintenanceManager
 
 
 # ---------------------------------------------------------
@@ -17,8 +28,7 @@ TEST_DB = "test_pams_maintenance.db"
 # ---------------------------------------------------------
 
 def setup_test_db():
-    conn = sqlite3.connect(TEST_DB)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = _test_get_connection()
     c = conn.cursor()
 
     # workers table (needed for get_all_workers)
@@ -30,7 +40,7 @@ def setup_test_db():
         )
     """)
 
-    # worker assignments table
+    # worker assignments
     c.execute("""
         CREATE TABLE IF NOT EXISTS worker_assignments (
             assignment_id  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +51,7 @@ def setup_test_db():
         )
     """)
 
-    # maintenance notifications table
+    # notifications
     c.execute("""
         CREATE TABLE IF NOT EXISTS maintenance_notifications (
             notif_id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,15 +69,6 @@ def setup_test_db():
     conn.close()
 
 
-# Override get_connection to use test DB
-_original_get_connection = db_module.get_connection
-
-def _test_get_connection():
-    conn = sqlite3.connect(TEST_DB)
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-
 # ---------------------------------------------------------
 #  TEST SUITE
 # ---------------------------------------------------------
@@ -75,8 +76,11 @@ def _test_get_connection():
 class TestMaintenanceManager(unittest.TestCase):
 
     def setUp(self):
+        # Reset DB
+        if os.path.exists(TEST_DB):
+            os.remove(TEST_DB)
+
         setup_test_db()
-        db_module.get_connection = _test_get_connection
         self.mm = MaintenanceManager()
 
         # Insert mock workers
@@ -88,7 +92,6 @@ class TestMaintenanceManager(unittest.TestCase):
         conn.close()
 
     def tearDown(self):
-        db_module.get_connection = _original_get_connection
         if os.path.exists(TEST_DB):
             os.remove(TEST_DB)
 
@@ -175,5 +178,3 @@ class TestMaintenanceManager(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-
-    
