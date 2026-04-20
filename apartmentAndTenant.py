@@ -512,12 +512,12 @@ class ApartmentManager:
 
         # some example maintenance requests at different stages
         maintenance=[
-            (1, "boiler not working - no hot water",           "high"),
-            (2, "leaking tap in bathroom",                     "low"),
-            (4, "faulty electrical socket in kitchen",         "high"),
-            (5, "front door lock stiff and hard to turn",      "medium"),
-            (7, "mould on bathroom ceiling",                   "medium"),
-            (3, "window latch broken on ground floor",         "low"),
+            (1, "boiler not working - no hot water",           "High"),
+            (2, "leaking tap in bathroom",                     "Low"),
+            (4, "faulty electrical socket in kitchen",         "High"),
+            (5, "front door lock stiff and hard to turn",      "Medium"),
+            (7, "mould on bathroom ceiling",                   "Medium"),
+            (3, "window latch broken on ground floor",         "Low"),
         ]
 
         for apt_id, desc, priority in maintenance:
@@ -532,7 +532,7 @@ class ApartmentManager:
             INSERT INTO maintenance_requests
                 (apartment_id, description, priority, status,
                  date_raised, date_resolved, cost, time_taken)
-            VALUES (1, 'broken light fitting in hallway', 'low', 'resolved',
+            VALUES (1, 'broken light fitting in hallway', 'Low', 'resolved',
                     '2025-03-01', '2025-03-03', 45.00, 1)
         """)
 
