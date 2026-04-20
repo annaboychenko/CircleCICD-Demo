@@ -100,20 +100,20 @@ class TestMaintenanceManager(unittest.TestCase):
         self.assertTrue(self.mm.is_worker_available("Alice Smith", "2026-05-01", "10:00"))
 
     def test_worker_not_available_after_assignment(self):
-        self.mm.assign_worker("Alice Smith", "2026-05-01", "10:00", request_id=1)
-        self.assertFalse(self.mm.is_worker_available("Alice Smith", "2026-05-01", "10:00"))
+        self.mm.assign_worker("Alice Smith", "01-05-2026", "10:00", request_id=1)
+        self.assertFalse(self.mm.is_worker_available("Alice Smith", "01-05-2026", "10:00"))
 
     def test_assign_worker_raises_if_unavailable(self):
-        self.mm.assign_worker("Alice Smith", "2026-05-01", "10:00", request_id=1)
+        self.mm.assign_worker("Alice Smith", "01-05-2026", "10:00", request_id=1)
         with self.assertRaises(ValueError):
-            self.mm.assign_worker("Alice Smith", "2026-05-01", "10:00", request_id=2)
+            self.mm.assign_worker("Alice Smith", "01-05-2026", "10:00", request_id=2)
 
     # ---------------------------------------------------------
     #  WORKER ASSIGNMENT INSERTION
     # ---------------------------------------------------------
 
     def test_assign_worker_inserts_row(self):
-        self.mm.assign_worker("Bob Jones", "2026-06-10", "14:00", request_id=5)
+        self.mm.assign_worker("Bob Jones", "10-06-2026", "14:00", request_id=5)
 
         conn = _test_get_connection()
         c = conn.cursor()
@@ -121,7 +121,7 @@ class TestMaintenanceManager(unittest.TestCase):
         row = c.fetchone()
         conn.close()
 
-        self.assertEqual(row, ("Bob Jones", "2026-06-10", "14:00", 5))
+        self.assertEqual(row, ("Bob Jones", "10-06-2026", "14:00", 5))
 
     # ---------------------------------------------------------
     #  NOTIFICATIONS
@@ -132,7 +132,7 @@ class TestMaintenanceManager(unittest.TestCase):
             apartment_id=7,
             tenant_name="John Doe",
             worker_name="Alice Smith",
-            scheduled_date="2026-05-02",
+            scheduled_date="02-05-2026",
             scheduled_time="09:00",
             description="Boiler repair"
         )
@@ -150,7 +150,7 @@ class TestMaintenanceManager(unittest.TestCase):
             apartment_id=3,
             tenant_name="Jane Doe",
             worker_name="Bob Jones",
-            scheduled_date="2026-05-03",
+            scheduled_date="03-05-2026",
             scheduled_time="11:00",
             description="Window repair"
         )
