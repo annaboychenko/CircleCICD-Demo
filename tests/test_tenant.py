@@ -119,6 +119,8 @@ class TestTenantManagement(unittest.TestCase):
             )
         """)
 
+        c.execute("UPDATE apartments SET tenant_id=1 WHERE apartment_id=1")
+
         conn.commit()
         conn.close()
 
