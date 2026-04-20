@@ -11,7 +11,7 @@ jobs:
           command: pip install --upgrade pip
       - run:
           name: Run tests
-          command: python test_apartment.py
+          command: python -m unittest discover -s tests -p "test_*.py"
 
 workflows:
   main:
